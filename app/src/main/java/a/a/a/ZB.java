@@ -44,6 +44,7 @@ public class ZB extends MB {
         }
         String previousValidName = lastValidName;
         if (previousValidName != null && !previousValidName.isEmpty() && s.toString().equals(lastValidName)) {
+            b.setError(null);
             b.setErrorEnabled(false);
             d = true;
             return;
@@ -77,16 +78,17 @@ public class ZB extends MB {
             return;
         }
         if (validNamePattern.matcher(s.toString()).matches()) {
+            b.setError(null);
             b.setErrorEnabled(false);
             d = true;
         } else {
             b.setErrorEnabled(true);
-            b.setError(xB.b().a(a, 0x7f0e05dc));
+            b.setError(xB.b().a(a, R.string.invalid_value_rule_3));
             d = false;
         }
         if (s.toString().trim().isEmpty()) {
             b.setErrorEnabled(true);
-            b.setError(xB.b().a(a, 0x7f0e05d9, 1));
+            b.setError(xB.b().a(a, R.string.invalid_value_min_lenth, 1));
             d = false;
         }
     }

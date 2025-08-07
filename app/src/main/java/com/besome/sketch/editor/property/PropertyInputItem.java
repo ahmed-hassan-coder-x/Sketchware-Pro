@@ -1,8 +1,5 @@
 package com.besome.sketch.editor.property;
 
-import static mod.bobur.StringEditorActivity.convertXmlToListMap;
-import static mod.bobur.StringEditorActivity.isXmlStringsContains;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -61,6 +58,7 @@ import a.a.a.wB;
 import a.a.a.yB;
 import mod.hey.studios.util.Helper;
 import pro.sketchware.R;
+import pro.sketchware.activities.resourceseditor.components.utils.StringsEditorManager;
 import pro.sketchware.databinding.PropertyInputItemBinding;
 import pro.sketchware.databinding.PropertyPopupInputTextBinding;
 import pro.sketchware.databinding.PropertyPopupParentAttrBinding;
@@ -178,9 +176,13 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
         if (orientationItem == 0) {
             propertyItem.setVisibility(GONE);
             propertyMenuItem.setVisibility(VISIBLE);
+            propertyItem.setOnClickListener(null);
+            propertyMenuItem.setOnClickListener(this);
         } else {
             propertyItem.setVisibility(VISIBLE);
             propertyMenuItem.setVisibility(GONE);
+            propertyItem.setOnClickListener(this);
+            propertyMenuItem.setOnClickListener(null);
         }
     }
 
@@ -192,10 +194,10 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
         imgLeftIcon = findViewById(R.id.img_left_icon);
         propertyItem = findViewById(R.id.property_item);
         propertyMenuItem = findViewById(R.id.property_menu_item);
-        if (z) {
-            setSoundEffectsEnabled(true);
-            setOnClickListener(this);
-        }
+//        if (z) {
+//            propertyMenuItem.setSoundEffectsEnabled(true);
+//            propertyMenuItem.setOnClickListener(this);
+//        }
     }
 
     private void showViewIdDialog() {
@@ -344,9 +346,10 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
 
     private void loadStringsListMap() {
         String filePath = FileUtil.getExternalStorageDir().concat("/.sketchware/data/").concat(sc_id.concat("/files/resource/values/strings.xml"));
-        convertXmlToListMap(FileUtil.readFileIfExist(filePath), stringsListMap);
+        StringsEditorManager stringsEditorManager = new StringsEditorManager();
+        stringsEditorManager.convertXmlStringsToListMap(FileUtil.readFileIfExist(filePath), stringsListMap);
 
-        if (!isXmlStringsContains(stringsListMap, "app_name") && filePath != null) {
+        if (!stringsEditorManager.isXmlStringsExist(stringsListMap, "app_name") && filePath != null) {
             HashMap<String, Object> map = new HashMap<>();
             map.put("key", "app_name");
             map.put("text", yB.c(lC.b(sc_id), "my_app_name"));
@@ -624,13 +627,13 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
         adapter.setOnItemClickListener(
                 new AttributesAdapter.ItemClickListener() {
                     @Override
-                    public void onItemClick(Map<String, String> attributes, String attr) {
+                    public void onItemClick(LinkedHashMap<String, String> attributes, String attr) {
                         setAttributeValue(attr, attributes);
                         dialog.dismiss();
                     }
 
                     @Override
-                    public void onItemLongClick(Map<String, String> attributes, String attr) {
+                    public void onItemLongClick(LinkedHashMap<String, String> attributes, String attr) {
                         dialog.dismiss();
                         var builder =
                                 new MaterialAlertDialogBuilder(getContext())
@@ -785,8 +788,8 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
         if (valueChangeListener != null) valueChangeListener.a(key, value);
     }
 
-    private Map<String, String> readAttributes() {
-        Map<String, String> attributes = new LinkedHashMap<>();
+    private LinkedHashMap<String, String> readAttributes() {
+        LinkedHashMap<String, String> attributes = new LinkedHashMap<>();
 
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -808,7 +811,7 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
         return attributes;
     }
 
-    private class AttributesAdapter extends ListAdapter<String, AttributesAdapter.ViewHolder> {
+    public static class AttributesAdapter extends ListAdapter<String, AttributesAdapter.ViewHolder> {
 
         private static final DiffUtil.ItemCallback<String> DIFF_CALLBACK =
                 new DiffUtil.ItemCallback<>() {
@@ -824,14 +827,15 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
                         return true;
                     }
                 };
-        private Map<String, String> attributes;
-        private ItemClickListener listener;
 
         public AttributesAdapter() {
             super(DIFF_CALLBACK);
         }
 
-        public void setAttributes(Map<String, String> attributes) {
+        private LinkedHashMap<String, String> attributes;
+        private ItemClickListener listener;
+
+        public void setAttributes(LinkedHashMap<String, String> attributes) {
             this.attributes = attributes;
         }
 
@@ -849,13 +853,6 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             holder.bind(getItem(position));
-        }
-
-        private interface ItemClickListener {
-
-            void onItemClick(Map<String, String> attributes, String item);
-
-            void onItemLongClick(Map<String, String> attributes, String item);
         }
 
         private class ViewHolder extends RecyclerView.ViewHolder {
@@ -883,6 +880,13 @@ public class PropertyInputItem extends RelativeLayout implements View.OnClickLis
                             return true;
                         });
             }
+        }
+
+        public interface ItemClickListener {
+
+            void onItemClick(LinkedHashMap<String, String> attributes, String item);
+
+            void onItemLongClick(LinkedHashMap<String, String> attributes, String item);
         }
     }
 }

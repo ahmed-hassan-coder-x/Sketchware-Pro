@@ -5,7 +5,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,28 +13,29 @@ import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.PopupMenu;
 
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.besome.sketch.lib.base.BaseAppCompatActivity;
 import com.bumptech.glide.Glide;
-import com.github.angads25.filepicker.model.DialogConfigs;
-import com.github.angads25.filepicker.model.DialogProperties;
-import com.github.angads25.filepicker.view.FilePickerDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
-import mod.bobur.StringEditorActivity;
+import dev.pranav.filepicker.FilePickerCallback;
+import dev.pranav.filepicker.FilePickerDialogFragment;
+import dev.pranav.filepicker.FilePickerOptions;
+import dev.pranav.filepicker.SelectionMode;
 import mod.bobur.XmlToSvgConverter;
 import mod.hey.studios.code.SrcCodeEditor;
 import mod.hey.studios.util.Helper;
 import pro.sketchware.R;
-import pro.sketchware.activities.coloreditor.ColorEditorActivity;
 import pro.sketchware.databinding.DialogCreateNewFileLayoutBinding;
 import pro.sketchware.databinding.DialogInputLayoutBinding;
 import pro.sketchware.databinding.ManageFileBinding;
@@ -49,7 +49,7 @@ import pro.sketchware.utility.SketchwareUtil;
 public class ManageResourceActivity extends BaseAppCompatActivity {
 
     private CustomAdapter adapter;
-    private FilePickerDialog dialog;
+    private FilePickerDialogFragment dialog;
     private FilePathUtil fpu;
     private FileResConfig frc;
     private String numProj;
@@ -73,7 +73,7 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        EdgeToEdge.enable(this);
+        enableEdgeToEdgeNoContrast();
         super.onCreate(savedInstanceState);
         binding = ManageFileBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -146,7 +146,7 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
             hideShowOptionsButton(true);
         });
         binding.importNewButton.setOnClickListener(v -> {
-            dialog.show();
+            dialog.show(getSupportFragmentManager(), "filePicker");
             hideShowOptionsButton(true);
         });
 
@@ -248,26 +248,31 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
     }
 
     private void setupDialog() {
-        DialogProperties properties = new DialogProperties();
-        properties.selection_mode = DialogConfigs.MULTI_MODE;
-        properties.selection_type = DialogConfigs.FILE_AND_DIR_SELECT;
-        properties.root = Environment.getExternalStorageDirectory();
-        properties.error_dir = Environment.getExternalStorageDirectory();
-        properties.offset = Environment.getExternalStorageDirectory();
-        properties.extensions = null;
-        dialog = new FilePickerDialog(this, properties, R.style.RoundedCornersDialog);
-        dialog.setTitle("Select a resource file");
-        dialog.setDialogSelectionListener(selections -> {
-            for (String path : selections) {
-                try {
-                    FileUtil.copyDirectory(new File(path), new File(temp + File.separator + Uri.parse(path).getLastPathSegment()));
-                } catch (IOException e) {
-                    SketchwareUtil.toastError("Couldn't import resource! [" + e.getMessage() + "]");
+        FilePickerOptions options = new FilePickerOptions();
+        options.setSelectionMode(SelectionMode.BOTH);
+        options.setMultipleSelection(true);
+        options.setTitle("Select resource files");
+
+        FilePickerCallback callback = new FilePickerCallback() {
+            @Override
+            public void onFilesSelected(@NotNull List<? extends File> files) {
+                if (files.isEmpty()) {
+                    SketchwareUtil.toastError("No files selected");
+                    return;
                 }
+                for (File file : files) {
+                    try {
+                        FileUtil.copyDirectory(file, new File(temp + File.separator + file.getName()));
+                    } catch (IOException e) {
+                        SketchwareUtil.toastError("Couldn't import resource! [" + e.getMessage() + "]");
+                    }
+                }
+                handleAdapter(temp);
+                handleFab();
             }
-            handleAdapter(temp);
-            handleFab();
-        });
+        };
+
+        dialog = new FilePickerDialogFragment(options, callback);
     }
 
     private void showRenameDialog(String path) {
@@ -323,20 +328,7 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
     }
 
     private void goEdit(int position) {
-        if (frc.listFileResource.get(position).endsWith("strings.xml")) {
-            Intent intent = new Intent();
-            intent.setClass(getApplicationContext(), StringEditorActivity.class);
-            intent.putExtra("title", Uri.parse(frc.listFileResource.get(position)).getLastPathSegment());
-            intent.putExtra("content", frc.listFileResource.get(position));
-            intent.putExtra("xml", "");
-            startActivity(intent);
-        } else if (frc.listFileResource.get(position).endsWith("colors.xml")) {
-            Intent intent = new Intent();
-            intent.setClass(getApplicationContext(), ColorEditorActivity.class);
-            intent.putExtra("title", Uri.parse(frc.listFileResource.get(position)).getLastPathSegment());
-            intent.putExtra("content", frc.listFileResource.get(position));
-            startActivity(intent);
-        } else if (frc.listFileResource.get(position).endsWith("xml")) {
+        if (frc.listFileResource.get(position).endsWith("xml")) {
             Intent intent = new Intent();
             intent.setClass(getApplicationContext(), SrcCodeEditor.class);
             intent.putExtra("title", Uri.parse(frc.listFileResource.get(position)).getLastPathSegment());
@@ -394,7 +386,7 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
                     if (FileUtil.isImageFile(path)) {
                         Glide.with(ManageResourceActivity.this).load(new File(path)).into(binding.icon);
                     } else if (path.endsWith(".xml") && "drawable".equals(getLastDirectory(path))) {
-                        XmlToSvgConverter.setImageVectorFromFile(binding.icon, path);
+                        new XmlToSvgConverter().setImageVectorFromFile(binding.icon, path);
                     } else {
                         binding.icon.setImageResource(R.drawable.ic_mtrl_file);
                     }

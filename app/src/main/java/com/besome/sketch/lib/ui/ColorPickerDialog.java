@@ -1,9 +1,10 @@
 package com.besome.sketch.lib.ui;
 
-import static pro.sketchware.activities.coloreditor.ColorEditorActivity.getColorValue;
-
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Color;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,65 +19,76 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.besome.sketch.beans.ColorBean;
+import com.besome.sketch.editor.manage.library.material3.Material3LibraryManager;
 import com.besome.sketch.editor.view.ColorGroupItem;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserFactory;
-
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import a.a.a.DB;
 import a.a.a.GB;
 import a.a.a.bB;
+import a.a.a.jC;
 import a.a.a.sq;
+import a.a.a.wq;
 import a.a.a.xB;
+import a.a.a.yq;
 import mod.hey.studios.util.Helper;
 import pro.sketchware.R;
+import pro.sketchware.activities.resourceseditor.components.models.ColorModel;
+import pro.sketchware.activities.resourceseditor.components.utils.ColorsEditorManager;
 import pro.sketchware.databinding.ColorPickerBinding;
+import pro.sketchware.databinding.ColorPickerCustomAttrBinding;
+import pro.sketchware.databinding.ColorPickerSimpleHexBinding;
+import pro.sketchware.databinding.ItemAttrBinding;
 import pro.sketchware.lib.validator.ColorInputValidator;
 import pro.sketchware.utility.FileUtil;
+import pro.sketchware.utility.PropertiesUtil;
+import pro.sketchware.utility.SketchwareUtil;
 
 public class ColorPickerDialog extends PopupWindow {
 
+    private Activity activity;
     private static String sc_id;
     private final ArrayList<ColorBean> colorList = new ArrayList<>();
     private final ArrayList<ColorBean[]> colorGroups = new ArrayList<>();
-    private final ArrayList<HashMap<String, Object>> color_res_list = new ArrayList<>();
+    private final ArrayList<ResColor> resColors = new ArrayList<>();
     private final ColorPickerBinding binding;
+    private ArrayList<Attribute> attributes;
     private b colorPickerCallback;
+    private materialColorAttr materialColorAttr;
     private ColorInputValidator colorValidator;
     private int k;
     private int l;
     private int m = -1;
     private DB colorPref;
-    private Activity activity;
-
+    private boolean hasMaterialColors;
+    private final ColorsAdapter colorsAdapter = new ColorsAdapter();
+    private Material3LibraryManager material3LibraryManager;
+    private yq yq;
+    private ColorsEditorManager colorsEditorManager;
 
     public ColorPickerDialog(Activity activity, int var3, boolean isTransparentColor, boolean isNoneColor) {
         super(activity);
         binding = ColorPickerBinding.inflate(activity.getLayoutInflater());
-        initialize(activity, var3, isTransparentColor, isNoneColor);
+        initialize(activity, getHexColor(var3), isTransparentColor, isNoneColor);
     }
 
-    public ColorPickerDialog(Activity activity, int var3, boolean isTransparentColor, boolean isNoneColor, String scId) {
+    public ColorPickerDialog(Activity activity, String color, boolean isTransparentColor, boolean isNoneColor, String scId) {
         super(activity);
         binding = ColorPickerBinding.inflate(activity.getLayoutInflater());
         sc_id = scId;
-        initialize(activity, var3, isTransparentColor, isNoneColor);
+        yq = new yq(activity, sc_id);
+        yq.a(jC.c(sc_id), jC.b(sc_id), jC.a(sc_id));
+        material3LibraryManager = new Material3LibraryManager(scId);
+        colorsEditorManager = new ColorsEditorManager();
+        hasMaterialColors = true;
+        initialize(activity, color, isTransparentColor, isNoneColor);
     }
 
-    public static boolean isValidHexColor(String colorStr) {
-        if (colorStr == null) {
-            return false;
-        }
-        Pattern pattern = Pattern.compile("^#([a-fA-F0-9]*)");
-        Matcher matcher = pattern.matcher(colorStr);
-        return matcher.matches();
+    private String getHexColor(int color) {
+        return String.format("#%06X", color);
     }
 
     private void deleteAllSavedColors() {
@@ -98,22 +110,64 @@ public class ColorPickerDialog extends PopupWindow {
         colorPickerCallback = callback;
     }
 
-    public void initialize(Activity activity, int var3, boolean isTransparentColor, boolean isNoneColor) {
+    public void materialColorAttr(materialColorAttr callback) {
+        materialColorAttr = callback;
+    }
+
+    public void initialize(Activity activity, String color, boolean isTransparentColor, boolean isNoneColor) {
         this.activity = activity;
         colorPref = new DB(activity, "P24");
         initializeColorData(isTransparentColor, isNoneColor);
+        initializeResColors();
+        initializeAttrsList();
 
-        for (int groupIndex = 0; groupIndex < colorGroups.size(); ++groupIndex) {
-            ColorBean[] colorBeans = colorGroups.get(groupIndex);
+        if (color.equals("NONE")) {
+            k = colorGroups.size() - 1;
+            l = k;
+            m = 0;
+        }
+        if (color.equals("TRANSPARENT")) {
+            k = colorGroups.size() - 2;
+            l = k;
+            m = 0;
+        } else if (color.startsWith("#")) {
+            int colorInt = Color.parseColor(color);
+            for (int groupIndex = 0; groupIndex < colorGroups.size(); ++groupIndex) {
+                ColorBean[] colorBeans = colorGroups.get(groupIndex);
 
-            for (int colorIndex = 0; colorIndex < colorBeans.length; ++colorIndex) {
-                if (colorBeans[colorIndex].colorCode == var3) {
-                    k = groupIndex;
-                    l = groupIndex;
-                    m = colorIndex;
+                for (int colorIndex = 0; colorIndex < colorBeans.length; ++colorIndex) {
+                    if (colorBeans[colorIndex].colorCode == colorInt) {
+                        k = groupIndex;
+                        l = groupIndex;
+                        m = colorIndex;
+                        break;
+                    }
+                }
+            }
+        } else if (color.startsWith("@color/")) {
+            k = 1;
+            l = 1;
+            for (int i = 0; i < resColors.size(); i++) {
+                ResColor resColor = resColors.get(i);
+                if (("@color/" + resColor.colorName()).equals(color)) {
+                    m = i;
                     break;
                 }
             }
+            binding.colorList.setAdapter(new resColorsAdapter(resColors, m));
+            binding.colorList.post(() -> binding.colorList.scrollToPosition(m));
+        } else if (color.startsWith("?")) {
+            k = 2;
+            l = 2;
+            for (int i = 0; i < attributes.size(); i++) {
+                Attribute attribute = attributes.get(i);
+                if (("?" + attribute.name()).equals(color) || ("?attr/" + attribute.name()).equals(color)) {
+                    m = i;
+                    break;
+                }
+            }
+            binding.colorList.setAdapter(new AttrAdapter(attributes, m));
+            binding.colorList.post(() -> binding.colorList.scrollToPosition(m));
         }
         super.setBackgroundDrawable(null);
         super.setAnimationStyle(android.R.style.Animation_Dialog);
@@ -125,21 +179,18 @@ public class ColorPickerDialog extends PopupWindow {
         super.setHeight(widthAndHeight[1]);
         binding.colorList.setHasFixedSize(true);
         binding.colorList.setLayoutManager(new LinearLayoutManager(activity.getApplicationContext()));
-        binding.colorList.setAdapter(new ColorsAdapter());
+        if (binding.colorList.getAdapter() == null)
+            binding.colorList.setAdapter(colorsAdapter);
         binding.colorList.setItemAnimator(new DefaultItemAnimator());
 
-        binding.tiCustomColor.setHint(xB.b().a(activity, R.string.picker_color_hint_enter_hex_color_code));
-
-        colorValidator = new ColorInputValidator(activity, binding.tiCustomColor, binding.tvCustomColor);
-        binding.etCustomColor.setPrivateImeOptions("defaultInputmode=english;");
-        binding.tvAddColor.setText(xB.b().a(activity, R.string.common_word_add).toUpperCase());
-        binding.tvAddColor.setOnClickListener(view -> {
-            if (colorValidator.b()) {
-                String formattedColor = String.format("#%8s", Helper.getText(binding.etCustomColor)).replaceAll(" ", "F");
-                savePickedColor(formattedColor.toUpperCase());
-                notifyChanges();
+        binding.fab.setOnClickListener(view -> {
+            if (sc_id != null && l == 2) {
+                showCustomAttrCreatorDialog();
+            } else {
+                showCustomColorCreatorDialog();
             }
         });
+
         binding.colorList.getAdapter().notifyItemChanged(m);
         binding.layoutColorTitle.removeAllViews();
 
@@ -151,12 +202,23 @@ public class ColorPickerDialog extends PopupWindow {
                 l = finalJ;
                 if (finalJ == 0 && colorGroups.get(finalJ).length == 0) {
                     bB.b(activity, xB.b().a(activity, R.string.picker_color_custom_color_not_found), 1).show();
+                    return;
                 }
                 if (finalJ == 1 && colorGroups.get(finalJ).length == 0) {
                     bB.b(activity, xB.b().a(activity, R.string.picker_color_xml_is_empty), 1).show();
-
+                    return;
                 }
-                binding.colorList.getAdapter().notifyDataSetChanged();
+                if (sc_id != null && finalJ == 2 && !material3LibraryManager.isMaterial3Enabled()) {
+                    SketchwareUtil.toastError("Please enable Material3 in the Library Manager first");
+                    return;
+                }
+                if (sc_id != null && finalJ == 1) {
+                    binding.colorList.setAdapter(new resColorsAdapter(resColors, -1));
+                } else if (sc_id != null && finalJ == 2) {
+                    binding.colorList.setAdapter(new AttrAdapter(attributes, -1));
+                } else {
+                    binding.colorList.setAdapter(colorsAdapter);
+                }
             });
             colorGroupItem.b.setText(colorBean.colorName);
             colorGroupItem.b.setTextColor(colorBean.displayNameColor);
@@ -195,6 +257,114 @@ public class ColorPickerDialog extends PopupWindow {
 
     }
 
+    private void showCustomColorCreatorDialog() {
+        ColorPickerSimpleHexBinding dialogBinding = ColorPickerSimpleHexBinding.inflate(activity.getLayoutInflater());
+        colorValidator = new ColorInputValidator(activity, dialogBinding.tiCustomColor, dialogBinding.colorPreview);
+        dialogBinding.etCustomColor.setPrivateImeOptions("defaultInputmode=english;");
+
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(Helper.getResString(R.string.save_to_collection))
+                .setView(dialogBinding.getRoot())
+                .setPositiveButton(Helper.getResString(R.string.common_word_save), (dialog, which) -> {
+                    if (colorValidator.b()) {
+                        String customColor = Helper.getText(dialogBinding.etCustomColor);
+                        if (customColor.startsWith("#")) {
+                            customColor = customColor.substring(1);
+                        }
+                        String formattedColor = String.format("#%8s", customColor).replaceAll(" ", "F");
+                        savePickedColor(formattedColor.toUpperCase());
+                        notifyChanges();
+                    }
+                })
+                .setNegativeButton(Helper.getResString(R.string.common_word_cancel), (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void showCustomAttrCreatorDialog() {
+        ColorPickerCustomAttrBinding dialogBinding = ColorPickerCustomAttrBinding.inflate(activity.getLayoutInflater());
+
+        dialogBinding.input.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String input = s.toString();
+                String fullMaterialAttrPrefix = "com.google.android.material.R.attr.";
+                String attrPrefix = "R.attr.";
+
+                if (input.startsWith(fullMaterialAttrPrefix)) {
+                    input = input.substring(fullMaterialAttrPrefix.length());
+                } else if (input.startsWith(attrPrefix)) {
+                    input = input.substring(attrPrefix.length());
+                } else {
+                    dialogBinding.inputLayout.setError(Helper.getResString(R.string.unknown_attr));
+                    return;
+                }
+
+                String color = colorsEditorManager.getColorValueFromAttrs(activity, input, 1, false);
+
+                if (color.equals(colorsEditorManager.defaultHexColor)) {
+                    dialogBinding.inputLayout.setError(Helper.getResString(R.string.unknown_attr));
+                    return;
+                }
+                dialogBinding.inputLayout.setError(null);
+                int lightColor = PropertiesUtil.parseColor(color);
+                int darkColor = PropertiesUtil.parseColor(colorsEditorManager.getColorValueFromAttrs(activity, input, 1, true));
+
+                // viewBinding don't support include , so here we should use findViewById
+                dialogBinding.getRoot().findViewById(R.id.dark_container).setBackgroundColor(darkColor);
+                dialogBinding.getRoot().findViewById(R.id.light_container).setBackgroundColor(lightColor);
+                ((TextView) dialogBinding.getRoot().findViewById(R.id.tvAttrName)).setText(input);
+                ((TextView) dialogBinding.getRoot().findViewById(R.id.dark_ttl)).setTextColor(lightColor);
+                ((TextView) dialogBinding.getRoot().findViewById(R.id.light_ttl)).setTextColor(darkColor);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        var dialog = new MaterialAlertDialogBuilder(activity)
+                .setTitle(Helper.getResString(R.string.save_to_collection))
+                .setView(dialogBinding.getRoot())
+                .setPositiveButton(Helper.getResString(R.string.common_word_save), null)
+                .setNegativeButton(Helper.getResString(R.string.common_word_cancel), null)
+                .show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (dialogBinding.inputLayout.getError() == null && !dialogBinding.input.getText().toString().isEmpty()) {
+                String attributeName = ((TextView) dialogBinding.getRoot().findViewById(R.id.tvAttrName)).getText().toString();
+
+                if (isAttrExist(attributeName)) {
+                    SketchwareUtil.toastError(Helper.getResString(R.string.attr_already_exist));
+                    return;
+                }
+
+                String savedAttrs = colorPref.f("P24I2");
+                String attrsToSave = savedAttrs + "," + attributeName;
+                colorPref.a("P24I2", (Object) (attrsToSave));
+                attributes.add(new Attribute(attributeName, savedAttrs.isEmpty() ? "Custom" : null));
+                assert binding.colorList.getAdapter() != null;
+                binding.colorList.getAdapter().notifyItemInserted(attributes.size());
+                binding.colorList.smoothScrollToPosition(attributes.size());
+                dialog.dismiss();
+            } else {
+                SketchwareUtil.toastError(Helper.getResString(R.string.unknown_attr));
+            }
+        });
+    }
+
+    private boolean isAttrExist(String attr) {
+        for (Attribute attribute : attributes) {
+            if (attribute.name.equals(attr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void showColorRemoveDialog(String color) {
         MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(activity);
         dialog.setIcon(R.drawable.delete_96);
@@ -213,6 +383,8 @@ public class ColorPickerDialog extends PopupWindow {
         colorList.add(new ColorBean("#FFF6F6F6", "CUSTOM", "#212121", R.drawable.checked_grey_32));
         if (sc_id != null)
             colorList.add(new ColorBean("#FFF6F6F6", "colors.xml", "#212121", R.drawable.checked_grey_32));
+        if (hasMaterialColors)
+            colorList.add(new ColorBean("#FFF6F6F6", "Material 3 Colors", "#212121", R.drawable.checked_grey_32));
         colorList.add(sq.p[0]);
         colorList.add(sq.q[0]);
         colorList.add(sq.r[0]);
@@ -235,7 +407,10 @@ public class ColorPickerDialog extends PopupWindow {
         colorList.add(sq.I[0]);
         colorList.add(sq.J[0]);
         colorGroups.add(getSavedColorBeans());
-        if (sc_id != null) colorGroups.add(geColorResBeans());
+        if (sc_id != null)
+            colorGroups.add(sq.p);
+        if (hasMaterialColors)
+            colorGroups.add(sq.p);
         colorGroups.add(sq.p);
         colorGroups.add(sq.q);
         colorGroups.add(sq.r);
@@ -317,83 +492,6 @@ public class ColorPickerDialog extends PopupWindow {
         return colorBeansResult;
     }
 
-    private ColorBean[] geColorResBeans() {
-        ColorBean[] colorBeansResult;
-        String clrsPath = FileUtil.getExternalStorageDir().concat("/.sketchware/data/").concat(sc_id.concat("/files/resource/values/colors.xml"));
-        parseColorsXML(FileUtil.readFileIfExist(clrsPath));
-
-        if (!color_res_list.isEmpty()) {
-            ColorBean[] colorBeans = new ColorBean[color_res_list.size()];
-            int index = 0;
-            while (index < color_res_list.size()) {
-                try {
-                    int parsedColor = Color.parseColor((color_res_list.get(index).get("colorValue")).toString());
-                    int red = Color.red(parsedColor);
-                    int green = Color.green(parsedColor);
-                    int blue = Color.blue(parsedColor);
-
-                    int count = 0;
-                    if (red > 240) count++;
-                    if (green > 240) count++;
-                    if (blue > 240) count++;
-
-
-                    colorBeans[index] = new ColorBean((color_res_list.get(index).get("colorValue")).toString(), (color_res_list.get(index).get("colorName")).toString(),
-                            count >= 2 ? "#212121" : "#ffffff",
-                            R.drawable.checked_white_32);
-
-                } catch (Exception e) {
-                    colorBeans = new ColorBean[0];
-                    break;
-                }
-                index++;
-            }
-            colorBeansResult = colorBeans;
-        } else {
-            colorBeansResult = new ColorBean[0];
-        }
-
-        return colorBeansResult;
-    }
-
-    private void parseColorsXML(String colorXml) {
-        try {
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            XmlPullParser parser = factory.newPullParser();
-            parser.setInput(new StringReader(colorXml));
-
-            int eventType = parser.getEventType();
-            String colorName = null;
-            String colorValue = null;
-
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                String tagName = parser.getName();
-                switch (eventType) {
-                    case XmlPullParser.START_TAG:
-                        if (tagName.equals("color")) {
-                            colorName = parser.getAttributeValue(null, "name");
-                        }
-                        break;
-                    case XmlPullParser.TEXT:
-                        colorValue = parser.getText();
-                        break;
-                    case XmlPullParser.END_TAG:
-                        if (tagName.equals("color")) {
-                            if (colorName != null && isValidHexColor(getColorValue(activity.getApplicationContext(), colorValue, 4))) {
-                                HashMap<String, Object> colors = new HashMap<>();
-                                colors.put("colorName", colorName);
-                                colors.put("colorValue", String.format("#%8s", getColorValue(activity.getApplicationContext(), colorValue, 4).replaceFirst("#", "")).replaceAll(" ", "F"));
-                                color_res_list.add(colors);
-                            }
-                        }
-                        break;
-                }
-                eventType = parser.next();
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
     private void smoothScrollToCurrentItem() {
         if (k < binding.layoutColorTitle.getChildCount()) {
             View childView = binding.layoutColorTitle.getChildAt(k);
@@ -423,10 +521,105 @@ public class ColorPickerDialog extends PopupWindow {
         binding.colorList.getAdapter().notifyDataSetChanged();
     }
 
+    public void initializeAttrsList() {
+        if (!hasMaterialColors) return;
+        attributes = new ArrayList<>();
+
+        attributes.add(new Attribute("colorSurface", "Surface"));
+        attributes.add(new Attribute("colorOnSurface"));
+        attributes.add(new Attribute("colorSurfaceVariant"));
+        attributes.add(new Attribute("colorOnSurfaceVariant"));
+        attributes.add(new Attribute("colorSurfaceInverse"));
+        attributes.add(new Attribute("colorOnSurfaceInverse"));
+
+        attributes.add(new Attribute("colorPrimary", "Primary"));
+        attributes.add(new Attribute("colorOnPrimary"));
+        attributes.add(new Attribute("colorPrimaryContainer"));
+        attributes.add(new Attribute("colorOnPrimaryContainer"));
+
+        attributes.add(new Attribute("colorSecondary", "Secondary"));
+        attributes.add(new Attribute("colorOnSecondary"));
+        attributes.add(new Attribute("colorSecondaryContainer"));
+        attributes.add(new Attribute("colorOnSecondaryContainer"));
+
+        attributes.add(new Attribute("colorTertiary", "Tertiary"));
+        attributes.add(new Attribute("colorOnTertiary"));
+        attributes.add(new Attribute("colorTertiaryContainer"));
+        attributes.add(new Attribute("colorOnTertiaryContainer"));
+
+        attributes.add(new Attribute("colorError", "Error"));
+        attributes.add(new Attribute("colorOnError"));
+        attributes.add(new Attribute("colorErrorContainer"));
+        attributes.add(new Attribute("colorOnErrorContainer"));
+
+        String savedAttrs = colorPref.f("P24I2");
+        if (savedAttrs != null && !savedAttrs.isEmpty()) {
+            String[] customAttrs = savedAttrs.split(",");
+            for (int i = 0; i < customAttrs.length; i++) {
+                String attr = customAttrs[i];
+                if (attr.isEmpty()) continue;
+                attributes.add(new Attribute(
+                        attr,
+                        i == 0 ? "Custom" : null));
+            }
+        }
+
+    }
+
+    private void initializeResColors() {
+        if (sc_id == null || yq == null)
+            return;
+        String fileNightPath = wq.b(sc_id) + "/files/resource/values-night/colors.xml";
+
+        ArrayList<ColorModel> colorList = new ArrayList<>();
+        ArrayList<ColorModel> colorNightList = new ArrayList<>();
+
+        colorsEditorManager.parseColorsXML(colorList, yq.getXMLColor());
+        colorsEditorManager.parseColorsXML(colorNightList, FileUtil.readFileIfExist(fileNightPath));
+
+        HashMap<String, String> nightColorsMap = new HashMap<>();
+        for (ColorModel nightColorModel : colorNightList) {
+            nightColorsMap.put(nightColorModel.getColorName(), nightColorModel.getColorValue());
+        }
+
+        for (ColorModel colorModel : colorList) {
+            int color = PropertiesUtil.parseColor(colorsEditorManager.getColorValue(activity.getApplicationContext(), colorModel.getColorValue(), 3));
+            int colorNight;
+            if (nightColorsMap.containsKey(colorModel.getColorName())) {
+                colorNight = PropertiesUtil.parseColor(colorsEditorManager.getColorValue(activity.getApplicationContext(), nightColorsMap.get(colorModel.getColorName()), 3, true));
+            } else {
+                colorNight = -1;
+            }
+            resColors.add(new ResColor(colorModel.getColorName(), color, colorNight));
+        }
+    }
+
     public interface b {
         void a(int var1);
 
         void a(String var1, int var2);
+    }
+
+    public interface materialColorAttr {
+        void selectedMaterialColorAttr(String attr, int attrColor);
+    }
+
+    public record Attribute(String name, String title) {
+
+        public Attribute(String name) {
+            this(name, null);
+        }
+
+        public boolean hasTitle() {
+            return title != null;
+        }
+
+        public String attrTitle() {
+            return title + " Colors :";
+        }
+    }
+
+    public record ResColor(String colorName, int colorValue, int nightColorValue) {
     }
 
     private class ColorsAdapter extends RecyclerView.Adapter<ColorsAdapter.ColorViewHolder> {
@@ -505,4 +698,138 @@ public class ColorPickerDialog extends PopupWindow {
             }
         }
     }
+
+    public class AttrAdapter extends RecyclerView.Adapter<AttrAdapter.AttrViewHolder> {
+
+        private final ArrayList<Attribute> attributeList;
+
+        private final int selectedPosition;
+
+        public AttrAdapter(ArrayList<Attribute> attributeList, int selectedPosition) {
+            this.attributeList = attributeList;
+            this.selectedPosition = selectedPosition;
+        }
+
+        @NonNull
+        @Override
+        public AttrViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            ItemAttrBinding binding = ItemAttrBinding.inflate(
+                    LayoutInflater.from(parent.getContext()), parent, false);
+            return new AttrViewHolder(binding);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull AttrViewHolder holder, int position) {
+            Attribute attribute = attributeList.get(position);
+            holder.binding.tvAttrName.setText(attribute.name());
+
+            int lightColor = PropertiesUtil.parseColor(colorsEditorManager.getColorValueFromAttrs(activity, attribute.name(), 1, false));
+            int darkColor = PropertiesUtil.parseColor(colorsEditorManager.getColorValueFromAttrs(activity, attribute.name(), 1, true));
+
+            holder.binding.darkContainer.setBackgroundColor(darkColor);
+            holder.binding.lightContainer.setBackgroundColor(lightColor);
+            holder.binding.darkTtl.setTextColor(lightColor);
+            holder.binding.lightTtl.setTextColor(darkColor);
+            holder.binding.title.setVisibility(attribute.hasTitle() ? View.VISIBLE : View.GONE);
+            if (attribute.hasTitle()) {
+                holder.binding.title.setText(attribute.attrTitle());
+            }
+            holder.binding.checkedImg.setVisibility(selectedPosition == position ? View.VISIBLE : View.GONE);
+
+            holder.binding.container.setOnClickListener(view -> {
+                if (materialColorAttr != null) {
+                    materialColorAttr.selectedMaterialColorAttr(attribute.name(), material3LibraryManager.canUseNightVariantColors() ? darkColor : lightColor);
+                }
+                dismiss();
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return attributeList.size();
+        }
+
+        public static class AttrViewHolder extends RecyclerView.ViewHolder {
+            private final ItemAttrBinding binding;
+
+            public AttrViewHolder(@NonNull ItemAttrBinding binding) {
+                super(binding.getRoot());
+                this.binding = binding;
+            }
+        }
+    }
+
+    public class resColorsAdapter extends RecyclerView.Adapter<resColorsAdapter.resColorsViewHolder> {
+
+        private final ArrayList<ResColor> resColors;
+
+        private final int selectedPosition;
+
+        public resColorsAdapter(ArrayList<ResColor> resColors, int selectedPosition) {
+            this.resColors = resColors;
+            this.selectedPosition = selectedPosition;
+        }
+
+        @NonNull
+        @Override
+        public resColorsViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            ItemAttrBinding binding = ItemAttrBinding.inflate(
+                    LayoutInflater.from(parent.getContext()), parent, false);
+            return new resColorsViewHolder(binding);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull resColorsViewHolder holder, int position) {
+            ResColor resColor = resColors.get(position);
+            holder.binding.tvAttrName.setText(resColor.colorName());
+            boolean hasNightColor = resColor.nightColorValue() != -1;
+            int reversedColor = getReversedColor(resColor.colorValue());
+
+            if (hasNightColor) {
+                holder.binding.darkContainer.setBackgroundColor(resColor.nightColorValue());
+                if (resColor.colorValue() != resColor.nightColorValue()) {
+                    holder.binding.darkTtl.setTextColor(resColor.colorValue());
+                    holder.binding.lightTtl.setTextColor(resColor.nightColorValue());
+                } else {
+                    holder.binding.darkTtl.setTextColor(reversedColor);
+                    holder.binding.lightTtl.setTextColor(getReversedColor(resColor.nightColorValue()));
+                }
+            } else {
+                holder.binding.darkContainer.setBackgroundColor(resColor.colorValue());
+                holder.binding.darkTtl.setTextColor(reversedColor);
+                holder.binding.lightTtl.setTextColor(reversedColor);
+            }
+            holder.binding.lightContainer.setBackgroundColor(resColor.colorValue());
+            holder.binding.checkedImg.setVisibility(selectedPosition == position ? View.VISIBLE : View.GONE);
+            holder.binding.checkedImg.setColorFilter(reversedColor);
+
+            holder.binding.container.setOnClickListener(view -> {
+                colorPickerCallback.a(resColor.colorName(), resColor.colorValue());
+                dismiss();
+            });
+        }
+
+        private int getReversedColor(int color) {
+            int alpha = Color.alpha(color);
+            int red = 255 - Color.red(color);
+            int green = 255 - Color.green(color);
+            int blue = 255 - Color.blue(color);
+            return Color.argb(alpha, red, green, blue);
+        }
+
+        @Override
+        public int getItemCount() {
+            return resColors.size();
+        }
+
+        public static class resColorsViewHolder extends RecyclerView.ViewHolder {
+            private final ItemAttrBinding binding;
+
+            public resColorsViewHolder(@NonNull ItemAttrBinding binding) {
+                super(binding.getRoot());
+                this.binding = binding;
+            }
+        }
+    }
+
 }

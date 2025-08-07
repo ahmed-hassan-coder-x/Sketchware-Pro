@@ -14,6 +14,7 @@ import com.besome.sketch.beans.ProjectFileBean;
 import com.besome.sketch.beans.ProjectLibraryBean;
 import com.besome.sketch.beans.SrcCodeBean;
 import com.besome.sketch.beans.ViewBean;
+import com.besome.sketch.editor.manage.library.material3.Material3LibraryManager;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -182,9 +183,22 @@ public class yq {
     public final String importedSoundsPath;
     private final oB fileUtil;
     private final Context context;
+
+    private ExportType exportingType;
+
+    public final HashMap<String, Object> metadata;
+
     public jq N;
     public boolean generateDataBindingClasses;
-    public boolean exportingProject;
+    public boolean isAndroidStudioExport;
+
+    public enum ExportType {
+        AAB,
+        SIGN_APP,
+        DEBUG_APP,
+        ANDROID_STUDIO,
+        SOURCE_CODE_VIEWING
+    }
 
     public yq(Context context, String sc_id) {
         this(context, wq.d(sc_id), lC.b(sc_id));
@@ -192,6 +206,7 @@ public class yq {
 
     public yq(Context context, String myscFolderPath, HashMap<String, Object> metadata) {
         this.context = context;
+        this.metadata = metadata;
         N = new jq();
         sc_id = yB.c(metadata, "sc_id");
         N.sc_id = sc_id;
@@ -375,7 +390,7 @@ public class yq {
             )).replaceAll(packageName);
             if (applyMultiDex) {
                 sketchApplicationFileContent = sketchApplicationFileContent.replaceAll(
-                        "Application \\{", "androidx.multidex.MultiDexApplication \\{");
+                        "Application \\{", "androidx.multidex.MultiDexApplication {");
             }
             if (logcatEnabled) {
                 sketchApplicationFileContent = sketchApplicationFileContent.replace(
@@ -385,6 +400,12 @@ public class yq {
                         "SketchLogger.broadcastLog(Log.getStackTraceString(throwable));\n" +
                                 "                    Process.killProcess(Process.myPid());"
                 );
+            }
+            if (new Material3LibraryManager(sc_id).isDynamicColorsEnabled()) {
+                sketchApplicationFileContent = sketchApplicationFileContent.replace(
+                                "mApplicationContext = getApplicationContext();", "mApplicationContext = getApplicationContext();\n" +
+                                        "        DynamicColors.applyToActivitiesIfAvailable(this);")
+                        .replace("import android.util.Log;", "import android.util.Log;\nimport com.google.android.material.color.DynamicColors;");
             }
 
             fileUtil.b(javaFilesPath + File.separator
@@ -436,19 +457,25 @@ public class yq {
     /**
      * Initialize project metadata
      */
-    public void a(iC projectLibraryManager, hC projectFileManager, eC projectDataManager, boolean exportingProject) {
+    public void a(iC projectLibraryManager, hC projectFileManager, eC projectDataManager) {
+        a(projectLibraryManager, projectFileManager, projectDataManager, ExportType.DEBUG_APP);
+    }
+
+    public void a(iC projectLibraryManager, hC projectFileManager, eC projectDataManager, ExportType exportingType) {
         ProjectLibraryBean adMob = projectLibraryManager.b();
         ProjectLibraryBean appCompat = projectLibraryManager.c();
         ProjectLibraryBean firebase = projectLibraryManager.d();
         ProjectLibraryBean googleMaps = projectLibraryManager.e();
+        this.exportingType = exportingType;
         N = new jq();
         N.packageName = packageName;
         N.projectName = applicationName;
         N.versionCode = versionCode;
         N.versionName = versionName;
         N.sc_id = sc_id;
-        N.isDebugBuild = !exportingProject;
-        this.exportingProject = exportingProject;
+        N.isDebugBuild = exportingType == ExportType.DEBUG_APP;
+        isAndroidStudioExport = exportingType == ExportType.ANDROID_STUDIO;
+        generateDataBindingClasses = !(exportingType == ExportType.DEBUG_APP || exportingType == ExportType.ANDROID_STUDIO);
         if (firebase.useYn.equals(ProjectLibraryBean.LIB_USE_Y)) {
             N.isFirebaseEnabled = true;
             N.addPermission(jq.PERMISSION_INTERNET);
@@ -664,7 +691,7 @@ public class yq {
             XmlBuilder externalPathTag = new XmlBuilder("external-path");
             externalPathTag.addAttribute("", "name", "external_files");
             externalPathTag.addAttribute("", "path", ".");
-            pathsTag.a(externalPathTag);
+            pathsTag.addChildNode(externalPathTag);
             srcCodeBeans.add(new SrcCodeBean("provider_paths.xml",
                     CommandBlock.applyCommands("xml/provider_paths.xml", pathsTag.toCode())));
         }
@@ -736,7 +763,7 @@ public class yq {
         for (ProjectFileBean activity : projectFileManager.b()) {
             if (!javaFiles.contains(new File(javaDir + activity.getJavaName()))) {
                 srcCodeBeans.add(new SrcCodeBean(activity.getJavaName(),
-                        new Jx(N, activity, projectDataManager).generateCode(exportingProject)));
+                        new Jx(N, activity, projectDataManager).generateCode(isAndroidStudioExport, sc_id)));
             }
         }
 
@@ -851,7 +878,7 @@ public class yq {
      * @return The file's code or an empty String if not found
      */
     public String getFileSrc(String filename, hC projectFileManager, eC projectDataManager, iC projectLibraryManager) {
-        a(projectLibraryManager, projectFileManager, projectDataManager, false);
+        a(projectLibraryManager, projectFileManager, projectDataManager);
         CommandBlock.x();
         boolean isJavaFile = filename.endsWith(".java");
         boolean isXmlFile = filename.endsWith(".xml");
@@ -868,17 +895,21 @@ public class yq {
                  Generating every java file is necessary to make command blocks for xml work
                  */
                 for (ProjectFileBean file : files) {
-                    CommandBlock.CBForXml(new Jx(N, file, projectDataManager).generateCode(exportingProject));
+                    CommandBlock.CBForXml(new Jx(N, file, projectDataManager).generateCode(isAndroidStudioExport, sc_id));
                 }
             }
         }
 
-        if (filename.equals("strings.xml")) {
-            return getXMLString();
-        } else if (filename.equals("colors.xml")) {
-            return getXMLColor();
-        } else if (filename.equals("styles.xml")) {
-            return getXMLStyle();
+        switch (filename) {
+            case "strings.xml" -> {
+                return getXMLString();
+            }
+            case "colors.xml" -> {
+                return getXMLColor();
+            }
+            case "styles.xml" -> {
+                return getXMLStyle();
+            }
         }
 
         if (isManifestFile) {
@@ -892,7 +923,7 @@ public class yq {
         for (ProjectFileBean file : files) {
             if (filename.equals(isJavaFile ? file.getJavaName() : file.getXmlName())) {
                 if (isJavaFile) {
-                    return new Jx(N, file, projectDataManager).generateCode(exportingProject);
+                    return new Jx(N, file, projectDataManager).generateCode(isAndroidStudioExport, sc_id);
                 } else if (isXmlFile) {
                     Ox xmlGenerator = new Ox(N, file);
                     xmlGenerator.a(eC.a(projectDataManager.d(filename)), projectDataManager.h(filename));
@@ -904,13 +935,21 @@ public class yq {
         return "";
     }
 
-    private String getXMLString() {
+    public String getXMLString() {
+        String filePath = wq.b(sc_id) + "/files/resource/values/strings.xml";
+        if (FileUtil.isExistFile(filePath) && exportingType == ExportType.SOURCE_CODE_VIEWING) {
+            return FileUtil.readFile(filePath);
+        }
         XmlBuilderHelper stringsFileBuilder = new XmlBuilderHelper();
         stringsFileBuilder.addNonTranslatableString("app_name", applicationName);
         return CommandBlock.applyCommands("strings.xml", stringsFileBuilder.toCode());
     }
 
-    private String getXMLColor() {
+    public String getXMLColor() {
+        String filePath = wq.b(sc_id) + "/files/resource/values/colors.xml";
+        if (FileUtil.isExistFile(filePath) && exportingType == ExportType.SOURCE_CODE_VIEWING) {
+            return FileUtil.readFile(filePath);
+        }
         XmlBuilderHelper colorsFileBuilder = new XmlBuilderHelper();
         colorsFileBuilder.addColor("colorPrimary", String.format("#%06X", colorPrimary & 0xffffff));
         colorsFileBuilder.addColor("colorPrimaryDark", String.format("#%06X", colorPrimaryDark & 0xffffff));
@@ -920,13 +959,33 @@ public class yq {
         return CommandBlock.applyCommands("colors.xml", colorsFileBuilder.toCode());
     }
 
-    private String getXMLStyle() {
-        if (N.g) {
+    public String getXMLStyle() {
+        String filePath = wq.b(sc_id) + "/files/resource/values/styles.xml";
+        if (FileUtil.isExistFile(filePath) && exportingType == ExportType.SOURCE_CODE_VIEWING) {
+            return FileUtil.readFile(filePath);
+        }
+        Material3LibraryManager material3LibraryManager = new Material3LibraryManager(sc_id);
+        if (material3LibraryManager.isMaterial3Enabled()) {
+            XmlBuilderHelper stylesFileBuilder = new XmlBuilderHelper();
+            stylesFileBuilder.addStyle("AppTheme", String.format("Theme.Material3.%s.NoActionBar", material3LibraryManager.getTheme()));
+            stylesFileBuilder.addItemToStyle("AppTheme", "android:statusBarColor", "@android:color/transparent");
+            stylesFileBuilder.addItemToStyle("AppTheme", "android:navigationBarColor", "@android:color/transparent");
+            stylesFileBuilder.addItemToStyle("AppTheme", "android:windowLightStatusBar", "?attr/isLightTheme");
+            stylesFileBuilder.addStyle("AppTheme.FullScreen", "AppTheme");
+            stylesFileBuilder.addItemToStyle("AppTheme.FullScreen", "android:windowFullscreen", "true");
+            stylesFileBuilder.addItemToStyle("AppTheme.FullScreen", "android:windowContentOverlay", "@null");
+            stylesFileBuilder.addStyle("AppTheme.AppBarOverlay", "ThemeOverlay.Material3");
+            stylesFileBuilder.addStyle("AppTheme.PopupOverlay", "ThemeOverlay.Material3");
+            stylesFileBuilder.addStyle("AppTheme.DebugActivity", "AppTheme");
+            stylesFileBuilder.addItemToStyle("AppTheme.DebugActivity", "windowActionBar", "true");
+            stylesFileBuilder.addItemToStyle("AppTheme.DebugActivity", "windowNoTitle", "false");
+            return CommandBlock.applyCommands("styles.xml", stylesFileBuilder.toCode());
+        } else if (N.g) {
             boolean useNewMaterialComponentsTheme = projectSettings.getValue(ProjectSettings.SETTING_ENABLE_BRIDGELESS_THEMES,
                     BuildSettings.SETTING_GENERIC_VALUE_FALSE).equals(BuildSettings.SETTING_GENERIC_VALUE_TRUE);
             XmlBuilderHelper stylesFileBuilder = new XmlBuilderHelper();
             stylesFileBuilder.addStyle("AppTheme", "Theme.MaterialComponents.Light.NoActionBar" + (useNewMaterialComponentsTheme ? "" : ".Bridge"));
-            // todo: add `colorOnPrimary` to custom theme colors.
+            // todo: add 'colorOnPrimary' to custom theme colors.
             stylesFileBuilder.addItemToStyle("AppTheme", "colorOnPrimary", "@android:color/white");
             stylesFileBuilder.addItemToStyle("AppTheme", "colorPrimary", "@color/colorPrimary");
             stylesFileBuilder.addItemToStyle("AppTheme", "colorPrimaryDark", "@color/colorPrimaryDark");
