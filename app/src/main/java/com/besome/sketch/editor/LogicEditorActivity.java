@@ -123,9 +123,13 @@ import mod.jbk.editor.manage.MoreblockImporter;
 import mod.jbk.util.BlockUtil;
 import mod.pranav.viewbinding.ViewBindingBuilder;
 import pro.sketchware.R;
+
 import pro.sketchware.activities.editor.view.CodeViewerActivity;
 import pro.sketchware.activities.resourceseditor.ResourcesEditorActivity;
 import pro.sketchware.activities.resourceseditor.components.utils.StringsEditorManager;
+
+import pro.sketchware.activities.editor.view.JavaEventCodeEditorActivity;
+
 import pro.sketchware.databinding.ImagePickerItemBinding;
 import pro.sketchware.databinding.PropertyPopupSelectorSingleBinding;
 import pro.sketchware.databinding.SearchWithRecyclerViewBinding;
@@ -147,6 +151,7 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
     public String B = "";
     public String C = "";
     public String D = "";
+    private String eventTitle;
     private Vibrator F;
     private LinearLayout J, K;
     private FloatingActionButton openBlocksMenuButton;
@@ -157,6 +162,26 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
     private ViewLogicEditor n;
     private ViewDummy p;
     private PaletteSelector paletteSelector;
+
+    private final ActivityResultLauncher<Intent> openStringEditor = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        if (result.getResultCode() == RESULT_OK) {
+            paletteSelector.performClickPalette(-1);
+        }
+    });
+    private final ActivityResultLauncher<Intent> javaEditorResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Intent data = result.getData();
+                    if (data != null) {
+                        // TODO: just for testing
+                        Intent intent = getIntent();
+                        intent.putExtra("beans", data.getSerializableExtra("block_beans"));
+                        finish();
+                        startActivity(intent);
+                    }
+                }
+            });
 
     private Rs w;
     private float r, q, s, t;
@@ -176,7 +201,7 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
     private Boolean isViewBindingEnabled;
 
     private void loadEventBlocks() {
-        ArrayList<BlockBean> eventBlocks = jC.a(B).a(M.getJavaName(), C + "_" + D);
+        ArrayList<BlockBean> eventBlocks = getIntent().hasExtra("beans") ? (ArrayList<BlockBean>) getIntent().getSerializableExtra("beans") : jC.a(B).a(M.getJavaName(), C + "_" + D);
         if (eventBlocks != null) {
             if (eventBlocks.isEmpty()) {
                 e(X);
@@ -2169,19 +2194,17 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
     public void onPostCreate(Bundle bundle) {
         super.onPostCreate(bundle);
 
-        String title;
         if (D.equals("moreBlock")) {
-            title = getTranslatedString(R.string.root_spec_common_define) + " " + ReturnMoreblockManager.getLogicEditorTitle(jC.a(B).b(M.getJavaName(), C));
+            eventTitle = getTranslatedString(R.string.root_spec_common_define) + " " + ReturnMoreblockManager.getLogicEditorTitle(jC.a(B).b(M.getJavaName(), C));
         } else if (C.equals("_fab")) {
-            title = xB.b().a(getContext(), "fab", D);
+            eventTitle = xB.b().a(getContext(), "fab", D);
         } else {
-            title = xB.b().a(getContext(), C, D);
+            eventTitle = xB.b().a(getContext(), C, D);
         }
-        String e1 = title;
 
-        o.a(e1, D);
+        o.a(eventTitle, D);
 
-        ArrayList<String> spec = FB.c(e1);
+        ArrayList<String> spec = FB.c(eventTitle);
         int blockId = 0;
         for (int i = 0; i < spec.size(); i++) {
             String specBit = spec.get(i);
@@ -2618,11 +2641,15 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
         yq yq = new yq(this, B);
         yq.a(jC.c(B), jC.b(B), jC.a(B));
         String code = new Fx(M.getActivityName(), yq.N, o.getBlocks(), isViewBindingEnabled).a();
-        var intent = new Intent(this, CodeViewerActivity.class);
+        var intent = new Intent(this, JavaEventCodeEditorActivity.class);
+        intent.putExtra("javaName", M.getJavaName());
+        intent.putExtra("xmlName", M.getXmlName());
+        intent.putExtra("eventName", D);
+        intent.putExtra("eventTitle", eventTitle);
         intent.putExtra("code", code);
         intent.putExtra("sc_id", B);
-        intent.putExtra("scheme", CodeViewerActivity.SCHEME_JAVA);
-        startActivity(intent);
+        intent.putExtra("old_beans", o.getBlocks());
+        javaEditorResultLauncher.launch(intent);
     }
 
     public void t() {
