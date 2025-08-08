@@ -2,9 +2,11 @@ package pro.sketchware.activities.main.fragments.projects_store.adapters;
 
 import static pro.sketchware.utility.UI.loadImageFromUrl;
 
+import android.app.ActivityOptions;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -52,7 +54,7 @@ public class StorePagerProjectsAdapter extends RecyclerView.Adapter<StorePagerPr
         holder.itemView.setScaleX(1f);
         holder.itemView.setScaleY(1f);
 
-        holder.binding.getRoot().setOnClickListener(v -> openProject(project));
+        holder.binding.getRoot().setOnClickListener(v -> openProject(project, v));
     }
 
     @Override
@@ -63,13 +65,22 @@ public class StorePagerProjectsAdapter extends RecyclerView.Adapter<StorePagerPr
         return projects.size();
     }
 
-    private void openProject(ProjectModel.Project project) {
-        var bundle = new Bundle();
-        bundle.putString("project_json", gson.toJson(project));
+    private void openProject(ProjectModel.Project project, View view) {
+        var fm = context.getSupportFragmentManager();
 
-        var intent = new Intent(context, ProjectPreviewActivity.class);
-        intent.putExtras(bundle);
-        context.startActivity(intent);
+        if (fm.findFragmentByTag("project_preview") == null) {
+            var bundle = new Bundle();
+            bundle.putString("project_json", gson.toJson(project));
+
+            var intent = new Intent(context, ProjectPreviewActivity.class);
+            intent.putExtras(bundle);
+            var options = ActivityOptions.makeSceneTransitionAnimation(
+                    context,
+                    view,
+                    "project_preview"
+            );
+            context.startActivity(intent, options.toBundle());
+        }
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {

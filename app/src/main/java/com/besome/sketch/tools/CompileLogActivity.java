@@ -12,6 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.NumberPicker;
 import android.widget.PopupMenu;
 
+import androidx.activity.EdgeToEdge;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -38,7 +39,7 @@ public class CompileLogActivity extends BaseAppCompatActivity {
     @SuppressLint("SetTextI18n")
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        enableEdgeToEdgeNoContrast();
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         binding = CompileLogBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());

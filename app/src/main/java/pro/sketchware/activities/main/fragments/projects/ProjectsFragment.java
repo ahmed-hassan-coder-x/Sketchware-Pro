@@ -27,7 +27,9 @@ import com.besome.sketch.adapters.ProjectsAdapter;
 import com.besome.sketch.design.DesignActivity;
 import com.besome.sketch.editor.manage.library.ProjectComparator;
 import com.besome.sketch.projects.MyProjectSettingActivity;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.divider.MaterialDividerItemDecoration;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
 import java.util.ArrayList;
@@ -139,19 +141,24 @@ public class ProjectsFragment extends DA {
 
         projectsAdapter = new ProjectsAdapter(this, projectsList);
         binding.myprojects.setAdapter(projectsAdapter);
-        binding.myprojects.setHasFixedSize(true);
 
         binding.myprojects.post(this::refreshProjectsList); // wait for RecyclerView to be ready
         UI.addSystemWindowInsetToPadding(binding.specialActionContainer, true, false, true, false);
-        UI.addSystemWindowInsetToPadding(binding.loadingContainer, true, false, true, true);
         UI.addSystemWindowInsetToPadding(binding.titleContainer, true, false, true, false);
         UI.addSystemWindowInsetToPadding(binding.myprojects, true, false, true, true);
 
-        binding.nestedScroll.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-            if (scrollY > oldScrollY) {
-                fab.shrink();
-            } else if (scrollY < oldScrollY) {
-                fab.extend();
+        MaterialDividerItemDecoration dividerItemDecoration = new MaterialDividerItemDecoration(requireContext(), MaterialDividerItemDecoration.VERTICAL);
+        dividerItemDecoration.setDividerColor(MaterialColors.getColor(binding.myprojects, com.google.android.material.R.attr.colorSurfaceContainerLowest));
+        binding.myprojects.addItemDecoration(dividerItemDecoration);
+
+        binding.nestedScroll.setOnScrollChangeListener(new NestedScrollView.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(NestedScrollView v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                if (scrollY > oldScrollY) {
+                    fab.shrink();
+                } else if (scrollY < oldScrollY) {
+                    fab.extend();
+                }
             }
         });
 
@@ -217,8 +224,8 @@ public class ProjectsFragment extends DA {
 
             requireActivity().runOnUiThread(() -> {
                 if (binding.swipeRefresh.isRefreshing()) binding.swipeRefresh.setRefreshing(false);
-                if (binding.loadingContainer.getVisibility() == View.VISIBLE) {
-                    binding.loadingContainer.setVisibility(View.GONE);
+                if (binding.loading3balls.getVisibility() == View.VISIBLE) {
+                    binding.loading3balls.setVisibility(View.GONE);
                     binding.myprojects.setVisibility(View.VISIBLE);
                 }
                 projectsList.clear();
@@ -236,7 +243,7 @@ public class ProjectsFragment extends DA {
             if (newProject != null) {
                 requireActivity().runOnUiThread(() -> {
                     projectsList.add(0, newProject);
-                    projectsAdapter.notifyDataSetChanged();
+                    projectsAdapter.notifyItemInserted(0);
                     binding.myprojects.scrollToPosition(0);
                 });
             }
@@ -250,7 +257,7 @@ public class ProjectsFragment extends DA {
                 int index = IntStream.range(0, projectsList.size()).filter(i -> projectsList.get(i).get("sc_id").equals(sc_id)).findFirst().orElse(-1);
                 if (index != -1) {
                     projectsList.set(index, updatedProject);
-                    requireActivity().runOnUiThread(() -> projectsAdapter.notifyDataSetChanged());
+                    requireActivity().runOnUiThread(() -> projectsAdapter.notifyItemChanged(index));
                 }
             }
         });

@@ -7,6 +7,7 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -39,7 +40,7 @@ public class ManagePermissionActivity extends BaseAppCompatActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        enableEdgeToEdgeNoContrast();
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         binding = ManagePermissionBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());

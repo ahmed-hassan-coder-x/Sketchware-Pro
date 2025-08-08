@@ -1,11 +1,7 @@
 package mod.hey.studios.editor.manage.block.v2;
 
-import static com.google.android.material.color.MaterialColors.harmonizeWithPrimary;
-
-import android.content.Context;
 import android.graphics.Color;
 import android.os.Environment;
-import android.view.ContextThemeWrapper;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -18,8 +14,6 @@ import dev.aldi.sayuti.block.ExtraBlockFile;
 import mod.agus.jcoderz.editor.manage.block.palette.PaletteSelector;
 import mod.hey.studios.editor.manage.block.ExtraBlockInfo;
 import mod.jbk.util.LogUtil;
-import pro.sketchware.R;
-import pro.sketchware.SketchApplication;
 import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
 
@@ -135,9 +129,7 @@ public class BlockLoader {
 
                 if (color instanceof String) {
                     try {
-                        Context context = new ContextThemeWrapper(SketchApplication.getContext(), R.style.Theme_SketchwarePro);
-                        int harmonizedColor = harmonizeWithPrimary(context, Color.parseColor((String) color));
-                        info.setColor(harmonizedColor);
+                        info.setColor(Color.parseColor((String) color));
                     } catch (IllegalArgumentException e) {
                         SketchwareUtil.toastError("Invalid color in Custom Block #" + (i + 1));
                         continue;

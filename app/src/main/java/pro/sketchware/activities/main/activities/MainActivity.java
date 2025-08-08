@@ -1,7 +1,6 @@
 package pro.sketchware.activities.main.activities;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -16,6 +15,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
@@ -30,9 +30,7 @@ import androidx.fragment.app.FragmentTransaction;
 import com.besome.sketch.lib.base.BasePermissionAppCompatActivity;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.firebase.FirebaseApp;
 import com.google.firebase.analytics.FirebaseAnalytics;
-import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +39,7 @@ import java.util.Objects;
 import a.a.a.DB;
 import a.a.a.GB;
 import a.a.a.oB;
+import a.a.a.sB;
 import a.a.a.wq;
 import a.a.a.xB;
 import mod.hey.studios.project.backup.BackupFactory;
@@ -55,7 +54,6 @@ import pro.sketchware.activities.main.fragments.projects.ProjectsFragment;
 import pro.sketchware.activities.main.fragments.projects_store.ProjectsStoreFragment;
 import pro.sketchware.databinding.MainBinding;
 import pro.sketchware.lib.base.BottomSheetDialogView;
-import pro.sketchware.utility.DataResetter;
 import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
 import pro.sketchware.utility.UI;
@@ -119,7 +117,7 @@ public class MainActivity extends BasePermissionAppCompatActivity {
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case 105:
-                    DataResetter.a(this, data.getBooleanExtra("onlyConfig", true));
+                    sB.a(this, data.getBooleanExtra("onlyConfig", true));
                     break;
 
                 case 111:
@@ -153,7 +151,7 @@ public class MainActivity extends BasePermissionAppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
-        enableEdgeToEdgeNoContrast();
+        EdgeToEdge.enable(this);
 
         tryLoadingCustomizedAppStrings();
         binding = MainBinding.inflate(getLayoutInflater());
@@ -392,9 +390,6 @@ public class MainActivity extends BasePermissionAppCompatActivity {
     public void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         drawerToggle.syncState();
-        if (isFirebaseInitialized(this)) {
-            FirebaseMessaging.getInstance().subscribeToTopic("all");
-        }
     }
 
     @Override
@@ -497,13 +492,4 @@ public class MainActivity extends BasePermissionAppCompatActivity {
             SketchwareUtil.toast(Helper.getResString(R.string.message_strings_xml_loaded));
         }
     }
-
-    private static boolean isFirebaseInitialized(Context context) {
-        try {
-            return FirebaseApp.getApps(context) != null && !FirebaseApp.getApps(context).isEmpty();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
 }

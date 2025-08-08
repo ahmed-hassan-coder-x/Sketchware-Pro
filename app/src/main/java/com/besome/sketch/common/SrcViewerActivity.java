@@ -81,9 +81,10 @@ public class SrcViewerActivity extends BaseAppCompatActivity {
             var fileManager = jC.b(sc_id);
             var dataManager = jC.a(sc_id);
             var libraryManager = jC.c(sc_id);
-            yq.a(libraryManager, fileManager, dataManager, a.a.a.yq.ExportType.SOURCE_CODE_VIEWING);
+            yq.a(libraryManager, fileManager, dataManager, false);
             ProjectBuilder builder = new ProjectBuilder(this, yq);
             builder.buildBuiltInLibraryInformation();
+            yq.generateDataBindingClasses = true;
             sourceCodeBeans = yq.a(fileManager, dataManager, builder.getBuiltInLibraryManager());
 
             try {

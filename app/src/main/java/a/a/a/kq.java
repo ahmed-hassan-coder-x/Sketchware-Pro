@@ -1,36 +1,24 @@
 package a.a.a;
 
-import static com.google.android.material.color.MaterialColors.harmonizeWithPrimary;
-
-import android.content.Context;
-import android.view.ContextThemeWrapper;
-
-import pro.sketchware.R;
-import pro.sketchware.SketchApplication;
 import pro.sketchware.menu.DefaultExtraMenuBean;
 
 public class kq {
     public static int a(String opcode, String blockType) {
-        Context context = new ContextThemeWrapper(SketchApplication.getContext(), R.style.Theme_SketchwarePro);
-        return a(context, opcode, blockType);
-    }
-
-    public static int a(Context context, String opcode, String blockType) {
-        int viewType = harmonizeWithPrimary(context, 0xff4a6cd4);
+        int viewType = 0xff4a6cd4;
 
         if (blockType.equals("h")) {
-            return harmonizeWithPrimary(context, 0xffc88330);
+            return 0xffc88330;
         }
 
         switch (opcode) {
             case "getResStr":
-                return harmonizeWithPrimary(context, 0xff7c83db);
+                return 0xff7c83db;
             case "getVar":
                 return switch (blockType) {
                     case "v" -> viewType;
-                    case "p" -> harmonizeWithPrimary(context, 0xff2ca5e2);
-                    case "l" -> harmonizeWithPrimary(context, 0xffcc5b22);
-                    default -> harmonizeWithPrimary(context, 0xffee7d16);
+                    case "p" -> 0xff2ca5e2;
+                    case "l" -> 0xffcc5b22;
+                    default -> 0xffee7d16;
                 };
             case "addListInt":
             case "insertListInt":
@@ -53,7 +41,7 @@ public class kq {
             case "addMapToList":
             case "insertMapToList":
             case "getMapInList":
-                return harmonizeWithPrimary(context, 0xffcc5b22);
+                return 0xffcc5b22;
             case "setVarBoolean":
             case "setVarInt":
             case "increaseInt":
@@ -68,13 +56,13 @@ public class kq {
             case "mapIsEmpty":
             case "mapClear":
             case "mapGetAllKeys":
-                return harmonizeWithPrimary(context, 0xffee7d16);
+                return 0xffee7d16;
             case "repeat":
             case "forever":
             case "break":
             case "if":
             case "ifElse":
-                return harmonizeWithPrimary(context, 0xffe1a92a);
+                return 0xffe1a92a;
             case "true":
             case "false":
             case "<":
@@ -111,7 +99,7 @@ public class kq {
             case "mapToStr":
             case "strToListMap":
             case "listMapToStr":
-                return harmonizeWithPrimary(context, 0xff5cb722);
+                return 0xff5cb722;
             case "mathGetDip":
             case "mathGetDisplayWidth":
             case "mathGetDisplayHeight":
@@ -136,7 +124,7 @@ public class kq {
             case "mathLog10":
             case "mathToRadian":
             case "mathToDegree":
-                return harmonizeWithPrimary(context, 0xff23b9a9);
+                return 0xff23b9a9;
             case "viewOnClick":
             case "isDrawerOpen":
             case "openDrawer":
@@ -330,7 +318,7 @@ public class kq {
             case "bluetoothConnectGetRandomUuid":
             case "locationManagerRequestLocationUpdates":
             case "locationManagerRemoveUpdates":
-                return harmonizeWithPrimary(context, 0xff2ca5e2);
+                return 0xff2ca5e2;
             case "fileutildelete":
             case "fileutilcopy":
             case "fileutilwrite":
@@ -360,10 +348,11 @@ public class kq {
             case "setBitmapFileBrightness":
             case "setBitmapFileContrast":
             case "getJpegRotate":
-                return harmonizeWithPrimary(context, 0xffa1887f);
+                return 0xffa1887f;
             default:
                 return 0xff8a55d7;
         }
+
     }
 
     public static String a(int listType) {

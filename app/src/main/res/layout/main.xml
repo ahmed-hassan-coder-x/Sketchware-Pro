@@ -8,7 +8,8 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/layout_coordinator"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="?attr/colorSurfaceContainer">
 
         <com.google.android.material.appbar.AppBarLayout
             android:id="@+id/appbar"
@@ -26,11 +27,12 @@
                 app:layout_scrollFlags="scroll|enterAlways|snap" />
 
             <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginTop="8dp"
-                app:cardBackgroundColor="?colorSurfaceContainer"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
                 app:cardCornerRadius="50dp"
                 app:layout_scrollFlags="scroll|enterAlways|snap">
 
@@ -54,6 +56,7 @@
             android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceContainer"
             app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -65,28 +68,14 @@
             android:layout_marginBottom="96dp"
             android:text="New project"
             app:icon="@drawable/ic_mtrl_add"
-            app:layout_behavior="com.google.android.material.behavior.HideViewOnScrollBehavior"
             tools:ignore="ContentDescription" />
 
-        <LinearLayout
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottom_nav"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:orientation="vertical">
-
-            <com.google.android.material.divider.MaterialDivider
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:dividerColor="?attr/colorSurfaceContainerHighest" />
-
-            <com.google.android.material.bottomnavigation.BottomNavigationView
-                android:id="@+id/bottom_nav"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                app:menu="@menu/main_menu" />
-
-        </LinearLayout>
+            app:menu="@menu/main_menu" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <com.besome.sketch.MainDrawer

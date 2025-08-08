@@ -101,10 +101,11 @@ public class PropertyCustomViewItem extends RelativeLayout implements View.OnCli
         propertyItem = findViewById(R.id.property_item);
         propertyMenuItem = findViewById(R.id.property_menu_item);
         imgLeftIcon = findViewById(R.id.img_left_icon);
-//        if (var2) {
-//            propertyMenuItem.setOnClickListener(this);
-//            propertyMenuItem.setSoundEffectsEnabled(true);
-//        }
+        if (var2) {
+            setOnClickListener(this);
+            setSoundEffectsEnabled(true);
+        }
+
     }
 
     public String getKey() {
@@ -160,15 +161,12 @@ public class PropertyCustomViewItem extends RelativeLayout implements View.OnCli
 
     public void setOrientationItem(int orientationItem) {
         if (orientationItem == 0) {
-            propertyItem.setVisibility(GONE);
-            propertyMenuItem.setVisibility(VISIBLE);
-            propertyItem.setOnClickListener(null);
-            propertyMenuItem.setOnClickListener(this);
+            propertyItem.setVisibility(View.GONE);
+            propertyMenuItem.setVisibility(View.VISIBLE);
         } else {
-            propertyItem.setVisibility(VISIBLE);
-            propertyMenuItem.setVisibility(GONE);
-            propertyItem.setOnClickListener(this);
-            propertyMenuItem.setOnClickListener(null);
+            propertyItem.setVisibility(View.VISIBLE);
+            propertyMenuItem.setVisibility(View.GONE);
         }
+
     }
 }

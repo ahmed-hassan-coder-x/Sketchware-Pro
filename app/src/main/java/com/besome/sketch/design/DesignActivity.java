@@ -8,7 +8,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -23,10 +22,10 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -58,7 +57,7 @@ import com.besome.sketch.editor.manage.view.ManageViewActivity;
 import com.besome.sketch.lib.base.BaseAppCompatActivity;
 import com.besome.sketch.lib.ui.CustomViewPager;
 import com.besome.sketch.tools.CompileLogActivity;
-import com.google.android.material.button.MaterialButton;
+import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
@@ -118,11 +117,9 @@ import pro.sketchware.activities.appcompat.ManageAppCompatActivity;
 import pro.sketchware.activities.editor.command.ManageXMLCommandActivity;
 import pro.sketchware.activities.editor.view.CodeViewerActivity;
 import pro.sketchware.activities.editor.view.ViewCodeEditorActivity;
-import pro.sketchware.activities.resourceseditor.ResourcesEditorActivity;
 import pro.sketchware.dialogs.BuildSettingsBottomSheet;
 import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
-import pro.sketchware.utility.ThemeUtils;
 import pro.sketchware.utility.apk.ApkSignatures;
 
 public class DesignActivity extends BaseAppCompatActivity implements View.OnClickListener {
@@ -138,9 +135,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     private DB r;
     private DB t;
     private Menu bottomMenu;
-    private PopupMenu bottomPopupMenu;
-    private MaterialButton btnRun;
-    private MaterialButton btnOptions;
+    private MenuItem directXmlEditorMenu;
     private ProjectFileBean projectFile;
     private TextView fileName;
     private String currentJavaFileName;
@@ -154,9 +149,8 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     });
     private final ActivityResultLauncher<Intent> openResourcesManager = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() == RESULT_OK) {
-            if (viewTabAdapter != null && viewPager.getCurrentItem() == 0) {
+            if (viewTabAdapter != null) {
                 viewTabAdapter.i();
-                refreshViewTabAdapter();
             }
         }
     });
@@ -432,7 +426,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        enableEdgeToEdgeNoContrast();
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.design);
         if (!isStoragePermissionGranted()) {
@@ -452,72 +446,75 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
         toolbar.setSubtitle(sc_id);
         setSupportActionBar(toolbar);
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
-
         drawer = findViewById(R.id.drawer_layout);
+        Insetter.builder()
+                .margin(WindowInsetsCompat.Type.navigationBars())
+                .applyToView(findViewById(R.id.container));
         drawer.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
-
-        Insetter.builder().margin(WindowInsetsCompat.Type.navigationBars()).applyToView(findViewById(R.id.container));
-
         coordinatorLayout = findViewById(R.id.layout_coordinator);
         fileName = findViewById(R.id.file_name);
-
         findViewById(R.id.file_name_container).setOnClickListener(this);
+        BottomAppBar bottomAppBar = findViewById(R.id.bottom_app_bar);
+        bottomAppBar.setOverflowIcon(ContextCompat.getDrawable(this, R.drawable.sorting_options));
+        bottomMenu = bottomAppBar.getMenu();
+        bottomMenu.add(Menu.NONE, 1, Menu.NONE, "Build Settings");
+        bottomMenu.add(Menu.NONE, 2, Menu.NONE, "Clean temporary files").setVisible(false);
+        bottomMenu.add(Menu.NONE, 3, Menu.NONE, "Show last compile error");
+        bottomMenu.add(Menu.NONE, 5, Menu.NONE, "Show source code");
+        bottomMenu.add(Menu.NONE, 4, Menu.NONE, "Install last built APK").setVisible(false);
+        bottomMenu.add(Menu.NONE, 6, Menu.NONE, "Show Apk signatures").setVisible(false);
+        directXmlEditorMenu = bottomMenu.add(Menu.NONE, 7, Menu.NONE, "Direct XML editor");
 
-        btnRun = findViewById(R.id.btn_run);
-        btnRun.setOnClickListener(v -> {
-            if (currentBuildTask != null && !currentBuildTask.canceled && !currentBuildTask.isBuildFinished) {
-                currentBuildTask.cancelBuild();
-                return;
-            }
+        bottomAppBar.setOnMenuItemClickListener(
+                item -> {
+                    var itemId = item.getItemId();
+                    switch (itemId) {
+                        case 1 -> {
+                            BuildSettingsBottomSheet sheet = BuildSettingsBottomSheet.newInstance(sc_id);
+                            sheet.show(getSupportFragmentManager(), BuildSettingsBottomSheet.TAG);
+                        }
+                        case 2 -> new Thread(
+                                () -> {
+                                    FileUtil.deleteFile(q.projectMyscPath);
+                                    updateBottomMenu();
+                                    runOnUiThread(
+                                            () ->
+                                                    SketchwareUtil.toast(
+                                                            "Done cleaning temporary files!"));
+                                })
+                                .start();
+                        case 3 -> new CompileErrorSaver(sc_id).showLastErrors(this);
+                        case 4 -> {
+                            if (FileUtil.isExistFile(q.finalToInstallApkPath)) {
+                                installBuiltApk();
+                            } else {
+                                SketchwareUtil.toast("APK doesn't exist anymore");
+                            }
+                        }
+                        case 5 -> showCurrentActivitySrcCode();
+                        case 6 -> {
+                            ApkSignatures apkSignatures =
+                                    new ApkSignatures(this, q.finalToInstallApkPath);
+                            apkSignatures.showSignaturesDialog();
+                        }
+                        case 7 -> toViewCodeEditor();
+                        default -> {
+                            if (itemId == R.id.menu_run) {
+                                BuildTask buildTask = new BuildTask(this);
+                                currentBuildTask = buildTask;
+                                buildTask.execute();
+                            } else if (itemId == R.id.menu_cancel) {
+                                if (currentBuildTask != null) {
+                                    currentBuildTask.cancelBuild();
+                                }
+                            } else {
+                                return false;
+                            }
+                        }
+                    }
 
-            BuildTask buildTask = new BuildTask(this);
-            currentBuildTask = buildTask;
-            buildTask.execute();
-        });
-
-        btnOptions = findViewById(R.id.btn_options);
-        btnOptions.setOnClickListener(v -> bottomPopupMenu.show());
-
-        bottomPopupMenu = new PopupMenu(this, btnOptions);
-        bottomMenu = bottomPopupMenu.getMenu();
-        bottomMenu.add(Menu.NONE, 1, Menu.NONE, "Build Settings").setOnMenuItemClickListener(item -> {
-            BuildSettingsBottomSheet sheet = BuildSettingsBottomSheet.newInstance(sc_id);
-            sheet.show(getSupportFragmentManager(), BuildSettingsBottomSheet.TAG);
-            return true;
-        });
-        bottomMenu.add(Menu.NONE, 2, Menu.NONE, "Clean temporary files").setVisible(false).setOnMenuItemClickListener(item -> {
-            new Thread(() -> {
-                FileUtil.deleteFile(q.projectMyscPath);
-                updateBottomMenu();
-                runOnUiThread(() -> SketchwareUtil.toast("Done cleaning temporary files!"));
-            }).start();
-            return true;
-        });
-        bottomMenu.add(Menu.NONE, 3, Menu.NONE, "Show last compile error").setOnMenuItemClickListener(item -> {
-            new CompileErrorSaver(sc_id).showLastErrors(this);
-            return true;
-        });
-        bottomMenu.add(Menu.NONE, 5, Menu.NONE, "Show source code").setOnMenuItemClickListener(item -> {
-            showCurrentActivitySrcCode();
-            return true;
-        });
-        bottomMenu.add(Menu.NONE, 4, Menu.NONE, "Install last built APK").setVisible(false).setOnMenuItemClickListener(item -> {
-            if (FileUtil.isExistFile(q.finalToInstallApkPath)) {
-                installBuiltApk();
-            } else SketchwareUtil.toast("APK doesn't exist anymore");
-            return true;
-        });
-        bottomMenu.add(Menu.NONE, 6, Menu.NONE, "Show Apk signatures").setVisible(false).setOnMenuItemClickListener(item -> {
-            ApkSignatures apkSignatures = new ApkSignatures(this, q.finalToInstallApkPath);
-            apkSignatures.showSignaturesDialog();
-            return true;
-        });
-        bottomMenu.add(Menu.NONE, 7, Menu.NONE, "Direct XML editor").setOnMenuItemClickListener(item -> {
-            toViewCodeEditor();
-            return true;
-        });
-        bottomPopupMenu.setOnDismissListener(menu -> btnOptions.setChecked(false));
-
+                    return true;
+                });
         xmlLayoutOrientation = findViewById(R.id.img_orientation);
         viewPager = findViewById(R.id.viewpager);
         viewPager.setAdapter(new ViewPagerAdapter(getSupportFragmentManager()));
@@ -542,13 +539,13 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                     componentTabAdapter.unselectAll();
                 }
                 if (position == 0) {
-                    bottomMenu.findItem(7).setVisible(true);
+                    directXmlEditorMenu.setVisible(true);
                     if (viewTabAdapter != null) {
                         viewTabAdapter.c(true);
                         xmlLayoutOrientation.setImageResource(R.drawable.ic_mtrl_screen);
                     }
                 } else if (position == 1) {
-                    bottomMenu.findItem(7).setVisible(false);
+                    directXmlEditorMenu.setVisible(false);
                     if (viewTabAdapter != null) {
                         xmlLayoutOrientation.setImageResource(R.drawable.ic_mtrl_code);
                         viewTabAdapter.c(false);
@@ -557,7 +554,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                         }
                     }
                 } else {
-                    bottomMenu.findItem(7).setVisible(false);
+                    directXmlEditorMenu.setVisible(false);
                     if (viewTabAdapter != null) {
                         xmlLayoutOrientation.setImageResource(R.drawable.ic_mtrl_code);
                         viewTabAdapter.c(false);
@@ -591,12 +588,15 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
 
     private void updateBottomMenu() {
         if (bottomMenu != null) {
-            handler.post(() -> {
-                bottomMenu.findItem(2).setVisible(q != null && FileUtil.isExistFile(q.projectMyscPath));
-                var isDebugApkExists = isDebugApkExists();
-                bottomMenu.findItem(4).setVisible(isDebugApkExists);
-                bottomMenu.findItem(6).setVisible(isDebugApkExists);
-            });
+            handler.post(
+                    () -> {
+                        bottomMenu
+                                .findItem(2)
+                                .setVisible(q != null && FileUtil.isExistFile(q.projectMyscPath));
+                        var isDebugApkExists = isDebugApkExists();
+                        bottomMenu.findItem(4).setVisible(isDebugApkExists);
+                        bottomMenu.findItem(6).setVisible(isDebugApkExists);
+                    });
         }
     }
 
@@ -767,6 +767,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                     jC.a(sc_id).a(jC.b(sc_id));
                 }
                 if (q) {
+                    jC.a(sc_id).b(jC.d(sc_id));
                     jC.a(sc_id).c(jC.d(sc_id));
                     jC.a(sc_id).a(jC.d(sc_id));
                 }
@@ -796,7 +797,9 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                     SketchwareUtil.toast("Failed to generate source.");
                     return;
                 }
-                var scheme = filename.endsWith(".xml") ? CodeViewerActivity.SCHEME_XML : CodeViewerActivity.SCHEME_JAVA;
+                var scheme = filename.endsWith(".xml")
+                        ? CodeViewerActivity.SCHEME_XML
+                        : CodeViewerActivity.SCHEME_JAVA;
                 launchActivity(CodeViewerActivity.class, null, new Pair<>("code", code), new Pair<>("sc_id", sc_id), new Pair<>("scheme", scheme));
             });
         }).start();
@@ -876,7 +879,8 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
      */
     void toAndroidManifestManager() {
         if (projectFile == null) return;
-        launchActivity(AndroidManifestInjection.class, null, new Pair<>("file_name", currentJavaFileName));
+        launchActivity(AndroidManifestInjection.class, null,
+                new Pair<>("file_name", currentJavaFileName));
     }
 
     /**
@@ -884,7 +888,8 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
      */
     void toAppCompatInjectionManager() {
         if (projectFile == null) return;
-        launchActivity(ManageAppCompatActivity.class, null, new Pair<>("file_name", projectFile.getXmlName()));
+        launchActivity(ManageAppCompatActivity.class, null,
+                new Pair<>("file_name", projectFile.getXmlName()));
     }
 
     /**
@@ -905,7 +910,8 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
      * Opens {@link ManageJavaActivity}.
      */
     void toJavaManager() {
-        launchActivity(ManageJavaActivity.class, null, new Pair<>("pkgName", q.packageName));
+        launchActivity(ManageJavaActivity.class, null,
+                new Pair<>("pkgName", q.packageName));
     }
 
     /**
@@ -927,13 +933,6 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
      */
     void toResourceManager() {
         launchActivity(ManageResourceActivity.class, openResourcesManager);
-    }
-
-    /**
-     * Opens {@link ResourcesEditorActivity}.
-     */
-    void toResourceEditor() {
-        launchActivity(ResourcesEditorActivity.class, openResourcesManager);
     }
 
     /**
@@ -1030,20 +1029,20 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
         private final ExecutorService executorService = Executors.newSingleThreadExecutor();
         private final NotificationManager notificationManager;
         private final int notificationId = 1;
-        private final MaterialButton btnRun;
-        private final MaterialButton btnOptions;
+        private final MenuItem runMenu;
+        private final MenuItem cancelMenu;
         private final LinearLayout progressContainer;
         private final TextView progressText;
         private final LinearProgressIndicator progressBar;
-        public volatile boolean canceled;
+        private volatile boolean canceled;
         private volatile boolean isBuildFinished;
         private boolean isShowingNotification = false;
 
         public BuildTask(DesignActivity activity) {
             super(activity);
             notificationManager = (NotificationManager) activity.getSystemService(Context.NOTIFICATION_SERVICE);
-            btnRun = activity.btnRun;
-            btnOptions = activity.btnOptions;
+            runMenu = activity.bottomMenu.findItem(R.id.menu_run);
+            cancelMenu = activity.bottomMenu.findItem(R.id.menu_cancel);
             progressContainer = activity.findViewById(R.id.progress_container);
             progressText = activity.findViewById(R.id.progress_text);
             progressBar = activity.findViewById(R.id.progress);
@@ -1059,7 +1058,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
             if (activity == null) return;
 
             activity.runOnUiThread(() -> {
-                updateRunButton(true);
+                updateRunMenu(true);
                 activity.r.a("P1I10", true);
                 activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -1108,7 +1107,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                 var fileManager = jC.b(sc_id);
                 var dataManager = jC.a(sc_id);
                 var libraryManager = jC.c(sc_id);
-                q.a(libraryManager, fileManager, dataManager);
+                q.a(libraryManager, fileManager, dataManager, false);
                 builder.buildBuiltInLibraryInformation();
                 q.b(fileManager, dataManager, libraryManager, builder.getBuiltInLibraryManager());
                 q.f();
@@ -1253,7 +1252,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                         notificationManager.cancel(notificationId);
                         isShowingNotification = false;
                     }
-                    updateRunButton(false);
+                    updateRunMenu(false);
                     activity.updateBottomMenu();
                     activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 }
@@ -1330,14 +1329,9 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
             notificationManager.createNotificationChannel(channel);
         }
 
-        private void updateRunButton(boolean isRunning) {
-            var context = getActivity();
-            btnRun.setBackgroundTintList(ColorStateList.valueOf(ThemeUtils.getColor(context, isRunning ? R.attr.colorErrorContainer : R.attr.colorPrimary)));
-            btnRun.setIcon(ContextCompat.getDrawable(context, isRunning ? R.drawable.ic_mtrl_stop : R.drawable.ic_mtrl_run));
-            btnRun.setIconTint(ColorStateList.valueOf(ThemeUtils.getColor(context, isRunning ? R.attr.colorOnErrorContainer : R.attr.colorSurfaceContainerLowest)));
-            btnRun.setTextColor(ColorStateList.valueOf(ThemeUtils.getColor(context, isRunning ? R.attr.colorOnErrorContainer : R.attr.colorSurfaceContainerLowest)));
-            btnRun.setText(isRunning ? "Stop" : "Run");
-            btnOptions.setEnabled(!isRunning);
+        private void updateRunMenu(boolean isRunning) {
+            runMenu.setVisible(!isRunning);
+            cancelMenu.setVisible(isRunning);
             progressContainer.setVisibility(isRunning ? View.VISIBLE : View.GONE);
         }
     }

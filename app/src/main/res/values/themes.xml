@@ -14,6 +14,7 @@
             @style/Preference.SketchwarePro.SwitchPreferenceCompat
         </item>
         <item name="tabStyle">@style/Widget.SketchwarePro.TabLayout</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.SketchwarePro.BottomSheetDialog</item>
         <item name="alertDialogTheme">@style/ThemeOverlay.SketchwarePro.AlertDialog</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.SketchwarePro.AlertDialog</item>
         <item name="popupMenuStyle">@style/Widget.Material3.PopupMenu</item>
@@ -36,15 +37,12 @@
         <item name="textAppearanceLabelLarge">@style/TextAppearance.SketchwarePro.LabelLarge</item>
         <item name="textAppearanceLabelMedium">@style/TextAppearance.SketchwarePro.LabelMedium</item>
         <item name="textAppearanceLabelSmall">@style/TextAppearance.SketchwarePro.LabelSmall</item>
+
+        <item name="colorOutlineVariant">?attr/colorSurfaceContainerHighest</item>
     </style>
 
     <style name="Theme.SketchwarePro.Main">
         <item name="navigationViewStyle">@style/Widget.SketchwarePro.NavigationView.Main</item>
-    </style>
-
-    <style name="Theme.SketchwarePro.ProjectPreview">
-        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.SketchwarePro.BottomSheetDialog
-        </item>
     </style>
 
     <style name="Theme.SketchwarePro.SmallToolbar">

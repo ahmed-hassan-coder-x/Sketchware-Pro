@@ -1,8 +1,6 @@
 package mod.hey.studios.project.backup;
 
-import android.content.Context;
 import android.os.Environment;
-import android.util.Log;
 
 import com.besome.sketch.beans.BlockBean;
 import com.google.gson.Gson;
@@ -278,7 +276,7 @@ public class BackupFactory {
 
     /************************ BACKUP ************************/
 
-    public void backup(Context context, String project_name) {
+    public void backup(String project_name) {
         String customFileName = ConfigActivity.getBackupFileName();
 
         String versionName = yB.c(lC.b(sc_id), "sc_ver_name");
@@ -317,7 +315,7 @@ public class BackupFactory {
 
         // Create a duplicate if already exists (impossible now :3)
         if (outZip.exists()) {
-            backup(context, project_name + "_d");
+            backup(project_name + "_d");
             return;
         }
         //delete temp dir if exist
@@ -384,7 +382,7 @@ public class BackupFactory {
 
         // Find custom blocks used and include them in the backup
         if (backupCustomBlocks) {
-            CustomBlocksManager cbm = new CustomBlocksManager(context, sc_id);
+            CustomBlocksManager cbm = new CustomBlocksManager(sc_id);
 
             Set<ExtraBlockInfo> blocks = new HashSet<>();
             Set<String> block_names = new HashSet<>();
@@ -412,13 +410,13 @@ public class BackupFactory {
         } catch (Exception e) {
             // An error occurred
 
-//            StringBuilder sb = new StringBuilder();
-//            for (StackTraceElement el : e.getStackTrace()) {
-//                sb.append(el.toString());
-//                sb.append("\n");
-//            }
+            StringBuilder sb = new StringBuilder();
+            for (StackTraceElement el : e.getStackTrace()) {
+                sb.append(el.toString());
+                sb.append("\n");
+            }
 
-            error = Log.getStackTraceString(e);
+            error = sb.toString();
             outPath = null;
 
             return;

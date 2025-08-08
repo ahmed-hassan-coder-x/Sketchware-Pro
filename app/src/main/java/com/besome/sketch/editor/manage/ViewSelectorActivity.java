@@ -6,7 +6,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.besome.sketch.beans.ProjectFileBean;
@@ -28,9 +30,6 @@ import a.a.a.xB;
 import pro.sketchware.R;
 import pro.sketchware.databinding.FileSelectorPopupSelectXmlActivityItemBinding;
 import pro.sketchware.databinding.FileSelectorPopupSelectXmlBinding;
-import pro.sketchware.utility.SketchwareUtil;
-import pro.sketchware.utility.ThemeUtils;
-import pro.sketchware.utility.UI;
 
 public class ViewSelectorActivity extends BaseAppCompatActivity {
     private final int[] x = new int[19];
@@ -165,7 +164,7 @@ public class ViewSelectorActivity extends BaseAppCompatActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        enableEdgeToEdgeNoContrast();
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         binding = FileSelectorPopupSelectXmlBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -230,9 +229,6 @@ public class ViewSelectorActivity extends BaseAppCompatActivity {
         });
         binding.container.setOnClickListener(v -> finish());
         overridePendingTransition(R.anim.ani_fade_in, R.anim.ani_fade_out);
-
-        UI.addSystemWindowInsetToPadding(binding.container, true, true, true, false);
-        UI.addSystemWindowInsetToMargin(binding.createNewView, false, false, false, true);
     }
 
     @Override
@@ -323,15 +319,19 @@ public class ViewSelectorActivity extends BaseAppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder viewHolder, int position) {
+            viewHolder.itemBinding.cardView.setStrokeWidth(0);
+            viewHolder.itemBinding.cardView.setStrokeColor(ContextCompat.getColor(
+                    ViewSelectorActivity.this, R.color.transparent));
+
             if (selectedTab == TAB_ACTIVITY) {
                 viewHolder.itemBinding.tvFilename.setVisibility(View.VISIBLE);
                 viewHolder.itemBinding.tvLinkedFilename.setVisibility(View.VISIBLE);
                 ProjectFileBean projectFileBean = jC.b(sc_id).b().get(position);
                 String xmlName = projectFileBean.getXmlName();
                 if (currentXml.equals(xmlName)) {
-                    viewHolder.itemBinding.cardView.setStrokeColor(
-                            ThemeUtils.getColor(ViewSelectorActivity.this, R.attr.colorPrimary));
-                    viewHolder.itemBinding.cardView.setStrokeWidth(SketchwareUtil.dpToPx(1f));
+                    viewHolder.itemBinding.cardView.setStrokeColor(ContextCompat.getColor(
+                            ViewSelectorActivity.this, R.color.scolor_dark_yellow_01));
+                    viewHolder.itemBinding.cardView.setStrokeWidth(2);
                 }
                 String javaName = projectFileBean.getJavaName();
                 viewHolder.itemBinding.imgEdit.setVisibility(View.VISIBLE);
@@ -344,9 +344,9 @@ public class ViewSelectorActivity extends BaseAppCompatActivity {
                 viewHolder.itemBinding.tvLinkedFilename.setVisibility(View.GONE);
                 ProjectFileBean customView = jC.b(sc_id).c().get(position);
                 if (currentXml.equals(customView.getXmlName())) {
-                    viewHolder.itemBinding.cardView.setStrokeColor(
-                            ThemeUtils.getColor(ViewSelectorActivity.this, R.attr.colorPrimary));
-                    viewHolder.itemBinding.cardView.setStrokeWidth(SketchwareUtil.dpToPx(1f));
+                    viewHolder.itemBinding.cardView.setStrokeColor(ContextCompat.getColor(
+                            ViewSelectorActivity.this, R.color.scolor_dark_yellow_01));
+                    viewHolder.itemBinding.cardView.setStrokeWidth(2);
                 }
                 if (customView.fileType == ProjectFileBean.PROJECT_FILE_TYPE_DRAWER) {
                     viewHolder.itemBinding.imgView.setImageResource(getViewIcon(4));

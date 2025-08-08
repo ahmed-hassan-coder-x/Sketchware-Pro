@@ -1,6 +1,5 @@
 package mod.hey.studios.project.custom_blocks;
 
-import android.content.Context;
 import android.os.Environment;
 
 import com.besome.sketch.beans.BlockBean;
@@ -26,13 +25,11 @@ import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
 
 public class CustomBlocksManager {
-    private final Context context;
     final String sc_id;
     ArrayList<BlockBean> blocks;
     ArrayList<ExtraBlockInfo> custom_blocks;
 
-    public CustomBlocksManager(Context context, String sc_id) {
-        this.context = context;
+    public CustomBlocksManager(String sc_id) {
         this.sc_id = sc_id;
 
         load();
@@ -93,7 +90,7 @@ public class CustomBlocksManager {
                     if (!(block.opCode.equals("definedFunc")
                             || block.opCode.equals("getVar")
                             || block.opCode.equals("getArg"))) {
-                        if (kq.a(context, block.opCode, block.type) == 0xff8a55d7) {
+                        if (kq.a(block.opCode, block.type) == -7711273) {
                             if (!usedBlocks.contains(block.opCode)) {
                                 usedBlocks.add(block.opCode);
 

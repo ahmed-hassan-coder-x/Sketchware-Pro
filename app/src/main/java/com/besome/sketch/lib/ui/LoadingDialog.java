@@ -2,7 +2,6 @@ package com.besome.sketch.lib.ui;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Color;
 import android.view.Window;
 import android.widget.TextView;
 
@@ -27,8 +26,7 @@ public class LoadingDialog extends Dialog {
 
         Window window = getWindow();
         if (window != null) {
-            window.setStatusBarColor(Color.TRANSPARENT);
-            window.setNavigationBarColor(Color.TRANSPARENT);
+            window.setStatusBarColor(0);
             WindowCompat.setDecorFitsSystemWindows(window, false);
         }
     }

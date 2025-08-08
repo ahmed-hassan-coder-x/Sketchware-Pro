@@ -1,7 +1,6 @@
 package a.a.a;
 
 import com.besome.sketch.beans.ComponentBean;
-import com.besome.sketch.editor.manage.library.material3.Material3LibraryManager;
 
 import java.util.ArrayList;
 
@@ -248,10 +247,9 @@ public class mq {
     /**
      * @return Imports needed for a type
      */
-    public static ArrayList<String> getImportsByTypeName(String scId, String name, String convert) {
+    public static ArrayList<String> getImportsByTypeName(String name, String convert) {
         ArrayList<String> importList = new ArrayList<>();
         ComponentsHandler.getImports(name, importList);
-        Material3LibraryManager materialLibraryManager = new Material3LibraryManager(scId);
 
         switch (name) {
             case "Map":
@@ -428,9 +426,7 @@ public class mq {
                 return importList;
 
             case "Toolbar":
-                importList.add(
-                        (materialLibraryManager.isMaterial3Enabled()) ? "com.google.android.material.appbar.MaterialToolbar" : "androidx.appcompat.widget.Toolbar"
-                );
+                importList.add("androidx.appcompat.widget.Toolbar");
                 importList.add("androidx.annotation.NonNull");
                 return importList;
 

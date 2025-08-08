@@ -12,15 +12,28 @@ import mod.jbk.util.LogUtil;
 import pro.sketchware.SketchApplication;
 
 public class CodeEditorLanguages {
+    public static final String[] LANGUAGES = {"kotlin.tmLanguage", "xml.tmLanguage.json"};
     public static final String SCOPE_NAME_KOTLIN = "source.kotlin";
     public static final String SCOPE_NAME_XML = "text.xml";
     private static final String TAG = "CodeEditorLanguages";
 
     static {
-        FileProviderRegistry.getInstance().addFileProvider(new AssetsFileResolver(SketchApplication.getContext().getAssets()));
+        FileProviderRegistry.getInstance().addFileProvider(
+                new AssetsFileResolver(SketchApplication.getContext().getAssets()));
+
+        for (String language : LANGUAGES) {
+            LanguageDefinitionListBuilder builder = new LanguageDefinitionListBuilder();
+            String languageName = language.substring(0, language.indexOf('.'));
+            builder.language(languageName, languageDefinitionBuilder -> {
+                languageDefinitionBuilder.grammar = "textmate/" + language;
+                languageDefinitionBuilder.defaultScopeName(language.equals(LANGUAGES[1]) ? "text" : "source");
+                return Unit.INSTANCE;
+            });
+
             Throwable t;
             try {
-                GrammarRegistry.getInstance().loadGrammars("textmate/languages.json");
+                GrammarRegistry.getInstance().loadGrammars(builder);
+                continue;
             } catch (Exception e) {
                 t = e;
                 // fall-through
@@ -29,7 +42,8 @@ public class CodeEditorLanguages {
                 LogUtil.e(TAG, "Probably running on a low API device");
                 // fall-through
             }
-        
+            LogUtil.e(TAG, "Failed to load language '" + language + "'", t);
+        }
     }
 
     public static Language loadTextMateLanguage(String scopeName) {

@@ -84,13 +84,9 @@ public class PropertyGravityItem extends RelativeLayout implements View.OnClickL
         if (orientationItem == 0) {
             propertyItem.setVisibility(GONE);
             propertyMenuItem.setVisibility(VISIBLE);
-            propertyItem.setOnClickListener(null);
-            propertyMenuItem.setOnClickListener(this);
         } else {
             propertyItem.setVisibility(VISIBLE);
             propertyMenuItem.setVisibility(GONE);
-            propertyItem.setOnClickListener(this);
-            propertyMenuItem.setOnClickListener(null);
         }
     }
 
@@ -101,10 +97,10 @@ public class PropertyGravityItem extends RelativeLayout implements View.OnClickL
         imgLeftIcon = findViewById(R.id.img_left_icon);
         propertyItem = findViewById(R.id.property_item);
         propertyMenuItem = findViewById(R.id.property_menu_item);
-//        if (z) {
-//            propertyMenuItem.setOnClickListener(this);
-//            propertyMenuItem.setSoundEffectsEnabled(true);
-//        }
+        if (z) {
+            setOnClickListener(this);
+            setSoundEffectsEnabled(true);
+        }
     }
 
     private void showDialog() {
